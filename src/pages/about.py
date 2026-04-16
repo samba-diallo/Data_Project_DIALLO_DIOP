@@ -23,3 +23,18 @@ def layout() -> html.Div:
     """
     # TODO: assembler les sections membres, sources, méthodologie
     pass
+
+
+def register_callbacks(app) -> None:
+    """
+    Enregistre les callbacks spécifiques à la page 'À propos'.
+    (Peut être vide si la page n'a pas d'interactivité)
+    
+    Args:
+        app: Instance de l'application Dash (dash.Dash).
+    
+    Returns:
+        None
+    """
+    # TODO: ajouter les callbacks si nécessaire (probablement aucun)
+    pass
