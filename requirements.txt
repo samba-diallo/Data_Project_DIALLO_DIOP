@@ -1,0 +1,7 @@
+# Packages additionnels requis (construire manuellement - NE PAS utiliser pip freeze)
+# Installer avec : python -m pip install -r requirements.txt
+
+dash
+plotly
+pandas
+pytest
