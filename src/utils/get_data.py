@@ -44,3 +44,24 @@ def save_raw_data(df: pd.DataFrame) -> None:
     """
     # TODO: créer les répertoires si nécessaire et sauvegarder en CSV
     pass
+
+
+def main() -> None:
+    """
+    Point d'entrée principal du module get_data.
+    Orchestre le téléchargement et la sauvegarde des données brutes.
+    
+    Usage:
+        $ python -m src.utils.get_data
+        ou
+        $ python src/utils/get_data.py
+    
+    Returns:
+        None
+    """
+    # TODO: appeler download_data() et save_raw_data()
+    pass
+
+
+if __name__ == "__main__":
+    main()

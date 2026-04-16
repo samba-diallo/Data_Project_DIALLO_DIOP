@@ -86,3 +86,25 @@ def save_cleaned_data(df: pd.DataFrame) -> None:
     """
     # TODO: df.to_csv(config.DATA_CLEAN, index=False)
     pass
+
+
+def main() -> None:
+    """
+    Point d'entrée principal du module clean_data.
+    Orchestre le chargement, nettoyage et sauvegarde des données.
+    
+    Usage:
+        $ python -m src.utils.clean_data
+        ou
+        $ python src/utils/clean_data.py
+    
+    Returns:
+        None
+    """
+    # TODO: appeler load_raw_data(), remove_duplicates(), handle_missing_values(),
+    #       normalize_columns() et save_cleaned_data() dans cet ordre
+    pass
+
+
+if __name__ == "__main__":
+    main()
