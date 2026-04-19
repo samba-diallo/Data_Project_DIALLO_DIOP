@@ -5,7 +5,7 @@ Présente le contexte du sujet d'intérêt public choisi et les KPIs principaux.
 Doc Dash layout : https://dash.plotly.com/layout
 """
 
-from dash import html
+from dash import html, dcc
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -22,4 +22,19 @@ def layout() -> html.Div:
         html.Div: Layout complet de la page d'accueil.
     """
     # TODO: assembler header + contenu + footer
+    pass
+
+
+def register_callbacks(app) -> None:
+    """
+    Enregistre les callbacks spécifiques à la page d'accueil.
+    (Peut être vide si la page n'a pas d'interactivité)
+    
+    Args:
+        app: Instance de l'application Dash (dash.Dash).
+    
+    Returns:
+        None
+    """
+    # TODO: ajouter les callbacks si nécessaire
     pass
