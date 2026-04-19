@@ -94,17 +94,18 @@ Le dashboard démarre sur `http://localhost:8050` par défaut.
 
 ### Sources de données
 
-**A REMPLIR** : Indiquez ici votre source de données open data.
-
-Exemple :
+**Dataset ADEME Bilans GES - Émissions de Gaz à Effet de Serre**
 
 | Aspect | Détail |
 |--------|--------|
-| **Source** | [data.gouv.fr](https://www.data.gouv.fr) ou autre API public |
-| **URL de téléchargement** | `https://example.com/dataset.csv` |
-| **Format** | CSV / JSON / XLS |
-| **Licence** | Licence Ouverte / CC-BY / ODbL |
-| **Dernière mise à jour** | [DATE] |
+| **Source** | [ADEME - Bilans GES](https://data.ademe.fr/datasets/bilan-ges) |
+| **Plateforme** | data.ademe.fr (Open Data) |
+| **URL API** | `https://data.ademe.fr/api/explore/v2.1/catalog/datasets/bilan-ges/exports/csv?limit=-1` |
+| **Format** | CSV (actualisé 2× par mois) |
+| **Licence** | Licence Ouverte v2.0 / Domaine public |
+| **Producteur** | ADEME (Agence de la Transition Écologique) |
+| **Couverture** | France métropolitaine + DROM-COM |
+| **Dernière mise à jour** | [Actualisé bimensuellement] |
 
 ### Structure des données
 
