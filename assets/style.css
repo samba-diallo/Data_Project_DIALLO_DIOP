@@ -1,0 +1,436 @@
+/* ============================================================
+   GES Insight - Feuille de style globale
+   ------------------------------------------------------------
+   Direction artistique : "Éditorial scientifique français"
+   - Typographie : Fraunces (titres, serif variable) + DM Sans (texte)
+                   + JetBrains Mono (chiffres KPI)
+   - Palette     : off-white papier + vert profond + or pâle
+   - Inspiration : publications institutionnelles francaises (ADEME,
+                   Cour des Comptes), Bloomberg Green, Le Monde Diplo
+   ------------------------------------------------------------
+   Tous les fichiers .css du dossier assets/ sont chargés
+   automatiquement par Dash, dans l'ordre alphabétique.
+   ============================================================ */
+
+
+/* ============================================================
+   1. Importation des polices Google Fonts
+   ------------------------------------------------------------
+   On importe trois polices complementaires :
+   - Fraunces : serif variable, character editorial francais
+   - DM Sans  : sans-serif geometrique, alternative non generique a Inter
+   - JetBrains Mono : monospace pour les chiffres tabulaires (KPIs)
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+
+/* ============================================================
+   2. Design tokens (variables CSS)
+   ------------------------------------------------------------
+   Centraliser toutes les valeurs ici evite la duplication
+   et facilite les changements globaux (ex : passer en dark mode).
+   ============================================================ */
+:root {
+    /* Couleurs - palette "Editorial scientifique" */
+    --color-bg:           #FAFAF7;  /* fond principal, off-white papier */
+    --color-surface:      #FFFFFF;  /* surfaces eleves (cards) */
+    --color-border:       #E8E2D5;  /* bordures subtiles, ton chaud */
+    --color-text:         #1A1A1A;  /* texte principal, anthracite */
+    --color-text-muted:   #6B6B6B;  /* texte secondaire */
+    --color-text-subtle:  #9A9A9A;  /* texte tertiaire (legendes, dates) */
+    --color-primary:      #1F3A2C;  /* vert profond, accent principal */
+    --color-primary-hover:#2D5240;  /* hover sur primary */
+    --color-accent:       #C9A961;  /* or pale, highlights ponctuels */
+    --color-danger:       #B91C1C;  /* alertes, depassements */
+    --color-success:      #16A34A;  /* progres, reductions */
+
+    /* Typographie - familles */
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body:    'DM Sans', system-ui, -apple-system, sans-serif;
+    --font-mono:    'JetBrains Mono', 'Courier New', monospace;
+
+    /* Typographie - tailles (echelle modulaire ratio 1.25) */
+    --fs-xs:  0.75rem;   /* 12px - micro labels */
+    --fs-sm:  0.875rem;  /* 14px - texte secondaire */
+    --fs-base:1rem;      /* 16px - texte courant (mini mobile) */
+    --fs-lg:  1.125rem;  /* 18px - lead */
+    --fs-xl:  1.5rem;    /* 24px - sous-titre */
+    --fs-2xl: 2rem;      /* 32px - titre h2 */
+    --fs-3xl: 2.75rem;   /* 44px - titre h1 */
+    --fs-4xl: 3.75rem;   /* 60px - hero */
+
+    /* Espacement (grille de 8px) */
+    --space-1: 0.25rem;  /* 4px */
+    --space-2: 0.5rem;   /* 8px */
+    --space-3: 0.75rem;  /* 12px */
+    --space-4: 1rem;     /* 16px */
+    --space-6: 1.5rem;   /* 24px */
+    --space-8: 2rem;     /* 32px */
+    --space-12:3rem;     /* 48px */
+    --space-16:4rem;     /* 64px */
+
+    /* Border radius (subtil, pas bubbly) */
+    --radius-sm: 4px;
+    --radius:    8px;
+    --radius-lg: 12px;
+
+    /* Ombres tres subtiles, look "papier sur table" */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow:    0 2px 4px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+
+    /* Transitions (150-300ms, conforme checklist UX) */
+    --transition: 200ms ease;
+}
+
+
+/* ============================================================
+   3. Reset et base typographique
+   ------------------------------------------------------------
+   On normalise les comportements navigateur et on applique
+   les choix typographiques globaux (taille de base, line-height).
+   ============================================================ */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: var(--fs-base);
+    /* line-height 1.6 = lisibilite optimale pour le texte courant
+       (recommandation 1.5-1.75 de la skill ui-ux-pro-max) */
+    line-height: 1.6;
+    /* Anti-aliasing : ameliore le rendu des polices sur ecrans Retina */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tous les titres utilisent Fraunces, la serif distinctive.
+   font-weight 600 = "semibold", plus moderne que 700 (bold) */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--color-text);
+    /* Letter-spacing legerement negatif sur les titres pour un look
+       editorial plus serre (technique courante en presse) */
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin-top: 0;
+}
+
+h1 { font-size: var(--fs-3xl); }
+h2 { font-size: var(--fs-2xl); }
+h3 { font-size: var(--fs-xl); }
+
+p {
+    margin-top: 0;
+    margin-bottom: var(--space-4);
+    /* Largeur max pour la lisibilite : 65-75 caracteres recommandes
+       (regle ui-ux-pro-max) - on utilise une approximation en em */
+    max-width: 70ch;
+}
+
+/* Chiffres tabulaires : alignement decimal propre (KPI cards) */
+.tabular-nums {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+
+/* ============================================================
+   4. Liens
+   ------------------------------------------------------------
+   Style sobre, sans soulignement par defaut, transition fluide.
+   ============================================================ */
+a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color var(--transition);
+}
+
+a:hover {
+    color: var(--color-primary-hover);
+    /* Soulignement uniquement au hover : indique l'interactivite
+       sans alourdir visuellement le texte au repos */
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+
+/* ============================================================
+   5. Navbar (barre de navigation principale)
+   ------------------------------------------------------------
+   Sticky en haut, fond blanc, bordure inferieure subtile.
+   Brand a gauche, liens centres ou a droite.
+   ============================================================ */
+.navbar-ges {
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-4) var(--space-8);
+    /* Sticky : reste en haut au scroll - pratique pour acces rapide aux
+       autres pages depuis n'importe ou */
+    position: sticky;
+    top: 0;
+    /* z-index 50 : la navbar reste au-dessus des graphes mais sous d'eventuels
+       modals (echelle z-index recommandee : 10/20/30/50/100) */
+    z-index: 50;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Brand : logo + nom du produit */
+.navbar-ges .brand {
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 600;
+    color: var(--color-primary);
+    letter-spacing: -0.01em;
+    /* cursor: pointer obligatoire sur tous les elements cliquables
+       (regle ui-ux-pro-max - "cursor-pointer") */
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.navbar-ges .brand:hover {
+    color: var(--color-primary-hover);
+    text-decoration: none;
+}
+
+/* Liens de navigation */
+.navbar-ges .nav-link {
+    color: var(--color-text-muted);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-sm);
+    transition: color var(--transition), background-color var(--transition);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.navbar-ges .nav-link:hover {
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    text-decoration: none;
+}
+
+/* Lien actif : indication visuelle de la page courante */
+.navbar-ges .nav-link.active {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+
+/* ============================================================
+   6. Header de page (titre + sous-titre)
+   ------------------------------------------------------------
+   Bandeau editorial qui ouvre chaque page : grand titre serif
+   sur petit kicker en majuscules, comme une couverture de revue.
+   ============================================================ */
+.page-header {
+    padding: var(--space-12) var(--space-8) var(--space-8);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-8);
+}
+
+/* Kicker : petit label en majuscules au-dessus du titre (style presse) */
+.page-header .kicker {
+    font-family: var(--font-body);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--color-accent);
+    /* Letter-spacing positif sur les majuscules : standard typo
+       pour ameliorer la lisibilite des all-caps */
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: var(--space-3);
+}
+
+.page-header h1 {
+    font-size: var(--fs-3xl);
+    margin-bottom: var(--space-3);
+}
+
+.page-header .subtitle {
+    font-size: var(--fs-lg);
+    color: var(--color-text-muted);
+    max-width: 65ch;
+    margin: 0;
+}
+
+
+/* ============================================================
+   7. Footer
+   ------------------------------------------------------------
+   Fin de page sobre : credits, lien source de donnees, copyright.
+   ============================================================ */
+.footer-ges {
+    border-top: 1px solid var(--color-border);
+    padding: var(--space-8);
+    margin-top: var(--space-16);
+    /* Petit texte adapte au footer (info accessoire) */
+    font-size: var(--fs-sm);
+    color: var(--color-text-muted);
+    background-color: var(--color-surface);
+}
+
+.footer-ges .footer-section-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-base);
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: var(--space-3);
+}
+
+.footer-ges .footer-meta {
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-subtle);
+    font-size: var(--fs-xs);
+}
+
+
+/* ============================================================
+   8. Container principal (zone de contenu de page)
+   ------------------------------------------------------------
+   Largeur max contrôlée pour eviter que le contenu ne s'etale
+   sur les ecrans tres larges (4K), ce qui nuit a la lisibilite.
+   ============================================================ */
+.page-container {
+    max-width: 1280px;
+    /* Margin auto centre horizontalement le container */
+    margin: 0 auto;
+    padding: 0 var(--space-8);
+}
+
+
+/* ============================================================
+   9. KPI cards (cartes d'indicateurs cles)
+   ------------------------------------------------------------
+   Affichage en grille responsive (4 cards sur desktop, empile
+   sur mobile via la grille Bootstrap utilisee dans home.py).
+   ============================================================ */
+.kpi-grid {
+    display: grid;
+    /* repeat(auto-fit, minmax(200px, 1fr)) : autant de colonnes que
+       possible, chacune au moins 200px de large. Responsive sans
+       media queries - les cards s'empilent toutes seules sur mobile */
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+    margin: var(--space-8) 0;
+}
+
+.kpi-card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-sm);
+    /* Bordure gauche en accent or pâle : signature visuelle distinctive
+       qui rappelle le kicker editorial du header de page. Subtile mais
+       memorable. */
+    border-left: 3px solid var(--color-accent);
+    transition: box-shadow var(--transition), transform var(--transition);
+}
+
+.kpi-card:hover {
+    /* Hover discret : légère élévation de l'ombre sans transform
+       (regle ui-ux-pro-max : eviter les transform qui shiftent le layout) */
+    box-shadow: var(--shadow);
+}
+
+.kpi-card .kpi-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.kpi-card .kpi-label {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    /* Letter-spacing positif sur les majuscules : standard typo
+       presse pour ameliorer la lisibilite des all-caps */
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.kpi-card .kpi-value {
+    font-size: var(--fs-2xl);
+    font-weight: 600;
+    color: var(--color-primary);
+    line-height: 1.1;
+    margin-bottom: var(--space-2);
+}
+
+.kpi-card .kpi-sublabel {
+    font-size: var(--fs-sm);
+    color: var(--color-text-muted);
+    line-height: 1.4;
+}
+
+
+/* ============================================================
+   10. Section de contenu (graphes, blocs editoriaux)
+   ------------------------------------------------------------
+   Espacement standard entre sections de la page d'accueil.
+   ============================================================ */
+.content-section {
+    margin: var(--space-12) 0;
+}
+
+.content-section .section-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+}
+
+.content-section .section-subtitle {
+    color: var(--color-text-muted);
+    font-size: var(--fs-base);
+    margin-bottom: var(--space-6);
+    max-width: 65ch;
+}
+
+/* Conteneur d'un graphe : fond blanc, bordure subtile, papier */
+.chart-card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-sm);
+}
+
+
+/* ============================================================
+   11. Accessibilite : respect du prefers-reduced-motion
+   ------------------------------------------------------------
+   Si l'utilisateur a active "Reduce motion" dans son OS, on coupe
+   toutes les transitions/animations. Recommandation WCAG.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+
+/* ============================================================
+   12. Focus visible (accessibilite clavier)
+   ------------------------------------------------------------
+   On rend tres visible le focus pour les utilisateurs qui
+   naviguent au clavier (Tab). Regle critique de la checklist UX.
+   ============================================================ */
+:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}

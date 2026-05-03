@@ -1,16 +1,15 @@
 """
-Page principale d'analyse du dashboard.
-Contient l'histogramme, la carte géolocalisée et les filtres interactifs.
-Au moins un graphique DOIT être dynamique (callback).
+Page principale d'analyse du dashboard - 'Explorer'.
+Contient l'histogramme, la carte choroplethe et les filtres interactifs.
+Au moins un graphique DOIT etre dynamique (callback) - exigence du prof.
 
-Doc cours callbacks : https://perso.esiee.fr/.../python-28-dash.html#interaction-simple
-Doc Dash callbacks  : https://dash.plotly.com/basic-callbacks
+Doc Dash callbacks : https://dash.plotly.com/basic-callbacks
 """
 
-from dash import html, dcc, Input, Output
-from src.components.histogram import create_histogram
-from src.components.geomap import create_geomap
-from src.utils.common_functions import load_cleaned_data, filter_data
+from dash import html
+
+# Import du header editorial commun a toutes les pages
+from src.components.header import create_header
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -20,20 +19,41 @@ from src.utils.common_functions import load_cleaned_data, filter_data
 def layout() -> html.Div:
     """
     Construit et retourne le layout de la page d'analyse.
-    Inclut les filtres (Dropdown, Slider), l'histogramme et la carte
-    géolocalisée dans un agencement responsive.
+    Comportera (Phase 4) les filtres (Dropdown, Slider), l'histogramme
+    et la carte choroplèthe dans un agencement responsive.
 
     Returns:
         html.Div: Layout complet de la page d'analyse.
     """
-    # TODO: ajouter dcc.Dropdown, dcc.Graph(id="histogram"), dcc.Graph(id="geomap")
-    pass
+    return html.Div(
+        className="page-container",
+        children=[
+            # Header éditorial : positionne la page comme l'outil principal
+            # d'exploration des données.
+            create_header(
+                kicker="Explorer",
+                title="Explorer les Bilans GES",
+                subtitle=(
+                    "Filtrez par région, année et type de structure pour "
+                    "découvrir la distribution des émissions et leur "
+                    "répartition géographique sur le territoire français."
+                ),
+            ),
+            # Placeholder : sera remplacé par filters + carte + histogramme
+            # + décomposition Scope 1/2/3 en Phase 4.
+            html.Div(
+                "Contenu à venir : carte choroplèthe, histogramme dynamique, "
+                "décomposition des émissions par scope.",
+                style={"padding": "2rem", "color": "var(--color-text-muted)"},
+            ),
+        ],
+    )
 
 
 def register_callbacks(app) -> None:
     """
     Enregistre les callbacks Dash qui rendent les graphiques dynamiques.
-    Met à jour l'histogramme et la carte en fonction des filtres sélectionnés.
+    Sera implémenté en Phase 4 (filtres -> mise à jour des graphes).
 
     Args:
         app: Instance de l'application Dash (dash.Dash).
@@ -41,6 +61,4 @@ def register_callbacks(app) -> None:
     Returns:
         None
     """
-    # TODO: @app.callback(Output("histogram","figure"), Input("filtre","value"))
-    # TODO: def update_histogram(selected_value): ...
     pass

@@ -2,7 +2,13 @@
 # Installer avec : python -m pip install -r requirements.txt
 
 # Web framework
-dash>=2.0,<3.0
+dash>=2.5,<3.0
+# dash-bootstrap-components : grille responsive, cards, NavbarSimple, Container...
+# Recommandé par les skills frontend-design et ui-ux-pro-max
+dash-bootstrap-components>=1.5,<2.0
+# dash-iconify : accès aux icônes SVG (Heroicons, Lucide, Tabler...) sans emojis
+# Conforme à la règle "no-emoji-icons" de la checklist UI/UX
+dash-iconify>=0.1,<1.0
 plotly>=5.0,<6.0
 
 # Data processing (pandas 3.0+ requires Python 3.10+)
