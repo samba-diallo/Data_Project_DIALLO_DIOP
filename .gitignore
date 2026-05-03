@@ -7,6 +7,11 @@ env/
 __pycache__/
 *.py[cod]
 *.pyo
+.pytest_cache/
+
+# Claude Code (skills, mémoires de l'assistant, instructions personnelles)
+.claude/
+CLAUDE.md
 
 # Données (optionnel selon taille)
 # data/raw/

@@ -1,7 +1,14 @@
 # Packages additionnels requis (construire manuellement - NE PAS utiliser pip freeze)
 # Installer avec : python -m pip install -r requirements.txt
 
-dash
-plotly
-pandas
-pytest
+# Web framework
+dash>=2.0,<3.0
+plotly>=5.0,<6.0
+
+# Data processing (pandas 3.0+ requires Python 3.10+)
+pandas>=1.5,<2.2.0
+# openpyxl : lecture des fichiers Excel (.xlsx) source ADEME
+openpyxl>=3.1,<4.0
+
+# Testing
+pytest>=7.0,<8.0
