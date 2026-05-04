@@ -73,6 +73,19 @@ EMISSION_MAPPING: dict[str, str] = {
 # comme des carrés vides dans VS Code et brouillent la lecture.
 PUA_RANGE = range(0xE000, 0xF8FF + 1)
 
+# Mappings de noms de régions ADEME -> noms officiels du GeoJSON France.
+# Le fichier GeoJSON utilise les noms officiels INSEE ; certaines variantes
+# ADEME utilisent des espaces au lieu de tirets ou des libellés non standard.
+# Sans cette correction, la jointure carte choroplèthe / données échouerait.
+REGION_NAME_FIXES: dict[str, str] = {
+    "Hauts de France": "Hauts-de-France",
+}
+
+# Régions à exclure car non géographiques (entités administratives internes
+# de l'ADEME présentes dans le dataset mais qui ne représentent pas un
+# territoire réel).
+REGIONS_TO_EXCLUDE: set[str] = {"DR ADEME"}
+
 
 # ─────────────────────────────────────────────────────────────────
 # BACKEND – Données
@@ -176,6 +189,7 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     # Trois étapes de nettoyage chaînées, chacune dans une fonction privée
     # pour clarifier l'intention et faciliter les tests.
     cleaned = _strip_pua_characters(cleaned)
+    cleaned = _normalize_region_names(cleaned)
     cleaned = _cast_types(cleaned)
     cleaned = _add_scope_totals(cleaned)
 
@@ -258,6 +272,19 @@ def _strip_pua_characters(df: pd.DataFrame) -> pd.DataFrame:
     for col in text_cols:
         # .map(clean) applique la fonction à chaque cellule de la colonne.
         df[col] = df[col].map(clean)
+    return df
+
+
+def _normalize_region_names(df: pd.DataFrame) -> pd.DataFrame:
+    """Harmonise les noms de régions avec ceux du GeoJSON France et exclut
+    les entrées non géographiques (ex: 'DR ADEME')."""
+    # On supprime d'abord les régions exclues (entités administratives ADEME
+    # qui ne correspondent à aucun territoire géographique réel).
+    df = df[~df["region"].isin(REGIONS_TO_EXCLUDE)].copy()
+
+    # Puis on applique les corrections de nommage : .replace() sur une
+    # série pandas remplace toutes les occurrences clé -> valeur du dict.
+    df["region"] = df["region"].replace(REGION_NAME_FIXES)
     return df
 
 

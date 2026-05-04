@@ -409,7 +409,121 @@ a:hover {
 
 
 /* ============================================================
-   11. Accessibilite : respect du prefers-reduced-motion
+   11. Filters bar (page Explorer)
+   ------------------------------------------------------------
+   Bandeau sticky en haut de la page Explorer regroupant les
+   3 controles (annee, region, type) + bouton de reset.
+   ============================================================ */
+.filters-bar {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--space-6);
+    margin-bottom: var(--space-8);
+    box-shadow: var(--shadow-sm);
+    /* Sticky : reste visible quand on scrolle dans les graphes en
+       dessous - permet d'ajuster les filtres sans remonter la page */
+    position: sticky;
+    /* top calcule pour rester sous la navbar (qui mesure ~56px) */
+    top: 70px;
+    z-index: 40;
+}
+
+.filter-label {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: var(--space-2);
+}
+
+/* Override des composants Dash pour respecter notre theme.
+   Les Dropdown et RangeSlider ont leur propre CSS qu'il faut
+   surcharger avec une specificite suffisante. */
+.filter-dropdown .Select-control,
+.filter-dropdown .Select-input,
+.filter-dropdown .Select-menu-outer {
+    border-color: var(--color-border) !important;
+    border-radius: var(--radius-sm) !important;
+    font-family: var(--font-body) !important;
+}
+
+.filter-dropdown .Select-value-label {
+    color: var(--color-text) !important;
+}
+
+/* Slider d'annees : couleur des poignees et du rail */
+.filter-slider .rc-slider-rail {
+    background-color: var(--color-border);
+}
+
+.filter-slider .rc-slider-track {
+    background-color: var(--color-primary);
+}
+
+.filter-slider .rc-slider-handle {
+    border-color: var(--color-primary);
+    background-color: var(--color-surface);
+}
+
+.filter-slider .rc-slider-mark-text {
+    font-size: var(--fs-xs);
+    color: var(--color-text-muted);
+}
+
+.filter-slider .rc-slider-dot-active {
+    border-color: var(--color-primary);
+}
+
+/* Bouton 'Reinitialiser' */
+.filter-reset-btn {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-4);
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--transition), border-color var(--transition);
+    /* Hauteur alignee avec les autres controles (~38px) */
+    height: 38px;
+    width: 100%;
+}
+
+.filter-reset-btn:hover {
+    background-color: var(--color-border);
+    border-color: var(--color-text-muted);
+}
+
+
+/* ============================================================
+   12. Layout Explorer : carte + histogramme cote a cote
+   ------------------------------------------------------------
+   Utilise CSS Grid pour un agencement responsive : 60/40 sur
+   desktop large, empile sur tablette et mobile.
+   ============================================================ */
+.explorer-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: var(--space-6);
+    margin-bottom: var(--space-8);
+}
+
+/* Sur ecran moyen et petit : empile verticalement */
+@media (max-width: 992px) {
+    .explorer-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* ============================================================
+   13. Accessibilite : respect du prefers-reduced-motion
    ------------------------------------------------------------
    Si l'utilisateur a active "Reduce motion" dans son OS, on coupe
    toutes les transitions/animations. Recommandation WCAG.
@@ -424,7 +538,7 @@ a:hover {
 
 
 /* ============================================================
-   12. Focus visible (accessibilite clavier)
+   14. Focus visible (accessibilite clavier)
    ------------------------------------------------------------
    On rend tres visible le focus pour les utilisateurs qui
    naviguent au clavier (Tab). Regle critique de la checklist UX.
