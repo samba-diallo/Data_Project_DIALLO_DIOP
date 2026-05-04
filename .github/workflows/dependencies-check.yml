@@ -1,0 +1,55 @@
+name: Dependency and Structure Check
+
+on:
+  push:
+    branches: [dev, dev1, dev2, main]
+  pull_request:
+    branches: [dev, dev1, dev2, main]
+
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Check requirements.txt exists
+        run: |
+          echo "Verifying requirements.txt..."
+          if [ -f requirements.txt ]; then
+            echo "requirements.txt found"
+            echo "Contents:"
+            cat requirements.txt
+          else
+            echo "requirements.txt not found!"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify package imports
+        run: |
+          echo "Testing package imports..."
+          python -c "import dash; print('dash OK')"
+          python -c "import plotly; print('plotly OK')"
+          python -c "import pandas; print('pandas OK')"
+          python -c "import pytest; print('pytest OK')"
+
+      - name: Check project structure
+        run: |
+          echo "Verifying project structure..."
+          test -d "src" && echo "src directory OK" || exit 1
+          test -d "tests" && echo "tests directory OK" || exit 1
+          test -d "data" && echo "data directory OK" || exit 1
+          test -f "config.py" && echo "config.py OK" || exit 1
+          test -f "main.py" && echo "main.py OK" || exit 1
+          test -f "README.md" && echo "README.md OK" || exit 1

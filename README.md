@@ -1,17 +1,53 @@
-# Projet Data – Dashboard Interactif
+# GES Insight
 
-> Dashboard d'analyse de données publiques (Open Data)  
-> Développé en Python avec Dash et Plotly
+> Tableau de bord interactif des Bilans Carbone réglementaires (BEGES)
+> publiés par les organisations françaises sur la plateforme ADEME.
+
+GES Insight donne une vue d'ensemble de la déclaration des émissions de gaz
+à effet de serre en France : qui publie son bilan, dans quelles régions, à
+quelle hauteur, et selon quelle décomposition entre les Scopes 1, 2 et 3 du
+référentiel BEGES.
+
+| Indicateur | Valeur |
+|---|---|
+| Bilans BEGES analysés | **9 991** |
+| Organisations distinctes (SIREN) | **6 817** |
+| Émissions cumulées | **7,8 Gt CO₂eq** |
+| Période couverte | **2009 — 2026** |
+| Couverture géographique | **France métropolitaine et DROM-COM** |
+
+**Stack imposée par le cahier des charges** : Python, pandas, Dash, Plotly.
 
 ---
 
-## Table des matières
+## Sommaire
 
+- [Aperçu](#aperçu)
 - [User Guide](#user-guide)
 - [Data](#data)
 - [Developer Guide](#developer-guide)
 - [Rapport d'analyse](#rapport-danalyse)
 - [Copyright](#copyright)
+- [Auteurs](#auteurs)
+
+---
+
+## Aperçu
+
+Le tableau de bord est structuré en trois pages :
+
+- **Vue d'ensemble** — quatre indicateurs clés (bilans, organisations,
+  émissions cumulées, période), graphique d'évolution annuelle des
+  publications BEGES et donut de répartition par type de structure.
+- **Explorer** — page d'exploration interactive (en cours d'intégration) :
+  carte choroplèthe régionale, histogramme des émissions et décomposition
+  par scope, synchronisés sur trois filtres (année, région, type).
+- **Méthodologie** — glossaire du référentiel BEGES, schéma du pipeline
+  de données et déclarations de copyright.
+
+Direction artistique : palette terre et vert profond, typographie éditoriale
+(Fraunces serif + DM Sans + JetBrains Mono pour les chiffres tabulaires),
+inspiration des publications institutionnelles françaises.
 
 ---
 
@@ -19,452 +55,437 @@
 
 ### Prérequis
 
-- **Python** 3.9 ou supérieur
-- **pip** (gestionnaire de packages Python)
-- **git** (optionnel, pour cloner le repository)
+- Python **3.10** ou supérieur (l'application utilise des annotations
+  de type modernes : `dict[str, str]`, `int | None`)
+- Connexion internet **uniquement** lors du premier téléchargement des
+  données ; le dashboard fonctionne ensuite hors ligne.
 
-### Installation et déploiement
-
-#### 1. Cloner le repository (si le projet est sur GitHub)
+### Installation
 
 ```bash
-git clone https://github.com/votre-username/data_project.git
-cd data_project
+git clone https://github.com/samba-diallo/Data_Project_DIALLO_DIOP.git
+cd Data_Project_DIALLO_DIOP
 ```
 
-#### 2. Créer un environnement virtuel (recommandé)
+Création d'un environnement virtuel (recommandé) :
 
 ```bash
-# Sur Linux / macOS
+# Linux / macOS
 python3 -m venv .venv
 source .venv/bin/activate
 
-# Sur Windows
+# Windows (PowerShell)
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\Activate.ps1
 ```
 
-#### 3. Installer les dépendances
+Installation des dépendances :
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-#### 4. Récupérer les données brutes (important !)
+### Préparation des données
 
-Avant de lancer le dashboard, il faut récupérer les données depuis la source :
+Le fichier source de l'ADEME est récupéré automatiquement la première fois
+puis stocké localement pour les exécutions ultérieures.
 
 ```bash
+# 1. Télécharger le fichier brut depuis l'API ADEME (≈ 10 Mo)
 python -m src.utils.get_data
-```
 
-Cela téléchargera automatiquement les données et les sauvegardera dans `data/raw/rawdata.csv`.
-
-#### 5. Nettoyer les données
-
-Ensuite, nettoyez les données pour préparer le dashboard :
-
-```bash
+# 2. Nettoyer et générer le CSV exploitable par le dashboard
 python -m src.utils.clean_data
 ```
 
-Cela créera `data/cleaned/cleaneddata.csv`.
+Résultat attendu :
 
-#### 6. Lancer le dashboard
+```
+data/
+├── raw/
+│   └── bilan-ges.xlsx          (10 000 lignes × 104 colonnes, données ADEME brutes)
+└── cleaned/
+    └── cleaneddata.csv         (9 991 lignes × 40 colonnes, prêt pour le dashboard)
+```
+
+### Lancer le dashboard
 
 ```bash
 python main.py
 ```
 
-Le dashboard démarre sur `http://localhost:8050` par défaut.
+Le serveur démarre par défaut sur **http://127.0.0.1:8050**.
+Pour arrêter : `Ctrl + C` dans le terminal.
 
-### Utilisation du dashboard
+### Variables d'environnement (optionnel)
 
-1. **Ouvrir dans le navigateur** : Accédez à `http://localhost:8050`
-2. **Navigation multi-pages** : Utilisez la barre de navigation pour :
-   - **Accueil** : Présentation du sujet et KPIs globaux
-   - **Analyse** : Histogrammes, cartes et filtres interactifs
-   - **À propos** : Crédits, sources et méthodologie
-3. **Interactivité** : Les graphiques réagissent aux filtres sélectionnés en temps réel
-4. **Arrêter le serveur** : `Ctrl+C` dans le terminal
+| Variable | Défaut | Usage |
+|---|---|---|
+| `HOST` | `127.0.0.1` | Adresse d'écoute du serveur |
+| `PORT` | `8050` | Port d'écoute |
+| `DEBUG` | `False` | Mode debug Dash (à n'activer qu'en développement local) |
+
+Exemple pour exposer le dashboard à un conteneur Docker :
+
+```bash
+HOST=0.0.0.0 PORT=8080 python main.py
+```
 
 ---
 
 ## Data
 
-### Sources de données
+### Source
 
-**Dataset ADEME Bilans GES - Émissions de Gaz à Effet de Serre**
+| Champ | Détail |
+|---|---|
+| Producteur | ADEME — Agence de la Transition Écologique |
+| Jeu de données | [Bilans GES](https://data.ademe.fr/datasets/bilan-ges) |
+| Format choisi | Excel (`.xlsx`), feuille `données` |
+| URL d'export | `https://data.ademe.fr/api/explore/v2.1/catalog/datasets/bilan-ges/exports/xlsx?limit=-1` |
+| Licence | Licence Ouverte v2.0 — Etalab |
+| Fréquence de mise à jour | Bimensuelle côté ADEME ; instantané embarqué dans le dépôt pour fonctionnement hors ligne |
+| Couverture géographique | France métropolitaine + DROM-COM |
+| Couverture temporelle | 2009 — 2026 |
 
-| Aspect | Détail |
-|--------|--------|
-| **Source** | [ADEME - Bilans GES](https://data.ademe.fr/datasets/bilan-ges) |
-| **Plateforme** | data.ademe.fr (Open Data) |
-| **URL API** | `https://data.ademe.fr/api/explore/v2.1/catalog/datasets/bilan-ges/exports/csv?limit=-1` |
-| **Format** | CSV (actualisé 2× par mois) |
-| **Licence** | Licence Ouverte v2.0 / Domaine public |
-| **Producteur** | ADEME (Agence de la Transition Écologique) |
-| **Couverture** | France métropolitaine + DROM-COM |
-| **Dernière mise à jour** | [Actualisé bimensuellement] |
+### Structure du dataset nettoyé
 
-### Structure des données
+Le pipeline `clean_data.py` réduit le fichier brut (104 colonnes) à
+**40 colonnes** organisées en quatre groupes.
 
-**Format** : Tableur (observations × variables)
+**Identification et localisation de l'organisation déclarante** (14 colonnes)
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| (À compléter) | numérique/catégoriel | Description |
-| (À compléter) | ... | ... |
+| Colonne | Type | Description |
+|---|---|---|
+| `id` | str | Identifiant unique du bilan ADEME |
+| `annee_reporting` | int | Année du bilan publié |
+| `annee_reference` | int (nullable) | Année de référence pour la trajectoire de réduction |
+| `region` | str | Région française (compatible GeoJSON INSEE) |
+| `code_departement`, `departement` | str | Département de la déclaration |
+| `type_structure` | str | Entreprise / Établissement public / Collectivité / État / Association |
+| `type_collectivite` | str (nullable) | Sous-type pour les collectivités |
+| `raison_sociale` | str | Nom officiel de l'organisation |
+| `siren` | str | Identifiant SIREN principal |
+| `code_naf`, `libelle_naf` | str | Code NAF / APE et son libellé |
+| `population` | int (nullable) | Population concernée pour les collectivités |
+| `methode_beges` | str | Version de la méthodologie BEGES utilisée (V4 ou V5) |
 
-### Caractéristiques requises
+**Postes d'émissions BEGES** (22 colonnes, en `tCO₂eq`)
 
-- [x] **Nombre d'observations (OBS)** : Doit être > 100 (typiquement plusieurs centaines)
-- [x] **Variable numérique non catégorielle** : Pour l'histogramme
-- [x] **Géolocalisation** : Latitude/longitude ou associée à une région/pays
+Conformes aux postes officiels du référentiel BEGES :
 
-### Pipeline de traitement des données
+- Scope 1 — émissions directes : `emissions_p1_1` à `emissions_p1_5`
+- Scope 2 — énergie achetée : `emissions_p2_1`, `emissions_p2_2`
+- Scope 3 — chaîne de valeur : `emissions_p3_1` à `emissions_p3_5`,
+  `emissions_p4_1` à `emissions_p4_5`, `emissions_p5_1` à `emissions_p5_4`,
+  `emissions_p6_1`
 
+**Totaux calculés** (4 colonnes) : `total_scope_1`, `total_scope_2`,
+`total_scope_3`, `total_emissions` — somme par ligne, NaN ignorés.
+
+### Pipeline de traitement
+
+```text
+API ADEME (xlsx)
+        ↓ get_data.download_data()
+data/raw/bilan-ges.xlsx
+        ↓ clean_data.load_raw_data()
+        ↓ remove_duplicates()         (dédoublonnage par Id ADEME)
+        ↓ handle_missing_values()     (drop si Région ou Année manquante)
+        ↓ normalize_columns()         (sélection des 36 colonnes utiles,
+        ↓                              renommage snake_case, cast Int64
+        ↓                              nullable, strip caractères Unicode PUA,
+        ↓                              calcul des totaux par scope)
+        ↓ save_cleaned_data()
+data/cleaned/cleaneddata.csv
+        ↓ common_functions.load_cleaned_data()
+        ↓ filter_data() / aggregate_data()
+Dashboard Dash (pages/home, pages/analysis, pages/about)
 ```
-data/raw/rawdata.csv
-        ↓
-  [get_data.py]  ← Télécharge et sauvegarde brut
-        ↓
-data/raw/rawdata.csv (stockage)
-        ↓
-  [clean_data.py]  ← Nettoie, normalise, agrège
-        ↓
-data/cleaned/cleaneddata.csv (prêt pour dashboard)
-        ↓
-  [Dashboard Dash]  ← Histogramme + Carte géolocalisée
-```
+
+### Conformité aux exigences du cahier des charges
+
+| Exigence | Réponse |
+|---|---|
+| Nombre d'observations > plusieurs centaines | 9 991 bilans (✓) |
+| Au moins une variable numérique non catégorielle | 22 postes d'émissions + 4 totaux (✓) |
+| Géolocalisation possible | Région + département pour chaque bilan, jointure avec GeoJSON France (✓) |
 
 ---
 
 ## Developer Guide
 
-### Architecture du code
+### Architecture des modules
 
-L'application suit une architecture **modulaire** avec séparation des responsabilités :
-
-```
-FRONTEND                BACKEND
-─────────────────       ─────────────────
-Pages (Dash layouts)    Utilitaires (pandas)
-  ↓                       ↓
-Composants graphiques ← Données nettoyées
-  ↓                       ↓
-Callbacks (interactivité) Logique applicative
-```
-
-#### Diagramme d'architecture (Mermaid)
+L'application sépare clairement **backend** (utilitaires de données) et
+**frontend** (composants et pages Dash). Le routing multi-pages est piloté
+par un dictionnaire `ROUTES` dans `main.py`.
 
 ```mermaid
-graph TD
-    A["main.py\n(Point d'entrée)"] --> B["create_app()"]
-    A --> C["define_layout()"]
-    A --> D["register_callbacks()"]
-    
-    B --> B1["dash.Dash()"]
-    B1 --> E["src/pages"]
-    
-    C --> E
-    C --> F["src/components"]
-    
-    D --> G["analysis.register_callbacks()"]
-    G --> H["update_histogram()"]
-    G --> I["update_geomap()"]
-    
-    E --> E1["home.py\n(layout)"]
-    E --> E2["analysis.py\n(layout + callbacks)"]
-    E --> E3["about.py\n(layout)"]
-    
-    F --> F1["navbar.py"]
-    F --> F2["header.py"]
-    F --> F3["footer.py"]
-    F --> F4["histogram.py"]
-    F --> F5["geomap.py"]
-    
-    H --> J["common_functions\n.load_cleaned_data()"]
-    H --> K["common_functions\n.filter_data()"]
-    H --> L["histogram\n.create_histogram()"]
-    
-    I --> J
-    I --> K
-    I --> M["geomap\n.create_geomap()"]
-    
-    J --> N["data/cleaned/\ncleaneddata.csv"]
-    K --> N
-    
-    style A fill:#4CAF50,color:#fff
-    style E fill:#2196F3,color:#fff
-    style F fill:#2196F3,color:#fff
-    style J fill:#FF9800,color:#fff
-    style N fill:#9C27B0,color:#fff
+flowchart LR
+    subgraph EntryPoint["Point d'entrée"]
+        MAIN["main.py"]
+    end
+
+    subgraph Frontend["Frontend — Composants Dash"]
+        NAVBAR["navbar.py"]
+        HEADER["header.py"]
+        FOOTER["footer.py"]
+        KPI["kpi_card.py"]
+        THEME["charts_theme.py"]
+    end
+
+    subgraph Pages["Pages multi-pages"]
+        HOME["pages/home.py<br/>Vue d'ensemble"]
+        EXPLORER["pages/analysis.py<br/>Explorer"]
+        ABOUT["pages/about.py<br/>Méthodologie"]
+    end
+
+    subgraph Backend["Backend — Pipeline de données"]
+        GETDATA["utils/get_data.py"]
+        CLEAN["utils/clean_data.py"]
+        COMMON["utils/common_functions.py"]
+    end
+
+    subgraph Storage["Données locales"]
+        RAW[("data/raw/<br/>bilan-ges.xlsx")]
+        CLEANED[("data/cleaned/<br/>cleaneddata.csv")]
+    end
+
+    MAIN --> NAVBAR
+    MAIN --> FOOTER
+    MAIN -->|routing URL| HOME
+    MAIN -->|routing URL| EXPLORER
+    MAIN -->|routing URL| ABOUT
+
+    HOME --> HEADER
+    EXPLORER --> HEADER
+    ABOUT --> HEADER
+
+    HOME --> KPI
+    HOME --> THEME
+
+    HOME --> COMMON
+    EXPLORER --> COMMON
+    COMMON --> CLEANED
+    GETDATA -->|API ADEME| RAW
+    RAW --> CLEAN
+    CLEAN --> CLEANED
 ```
 
-### Hiérarchie des fichiers
+### Arborescence
 
 ```
 data_project/
-│
-├── main.py                          # Point d'entrée
-├── config.py                        # Configuration centralisée
-├── requirements.txt                 # Dépendances
-├── README.md                        # Cette documentation
+├── main.py                       Point d'entrée Dash, routing multi-pages
+├── config.py                     Chemins, URL ADEME, host/port, mode debug
+├── requirements.txt              Dépendances Python (construit manuellement)
+├── README.md                     Présent fichier
+├── .gitignore
 │
 ├── data/
 │   ├── raw/
-│   │   └── rawdata.csv             # Données brutes (non modifiées)
+│   │   └── bilan-ges.xlsx        Snapshot ADEME (10 000 × 104)
 │   └── cleaned/
-│       └── cleaneddata.csv         # Données nettoyées (prêtes)
+│       └── cleaneddata.csv       Dataset prêt pour le dashboard (9 991 × 40)
 │
 ├── src/
-│   ├── __init__.py
+│   ├── components/               Composants Dash réutilisables
+│   │   ├── navbar.py             Barre de navigation
+│   │   ├── header.py             En-tête éditorial paramétrable
+│   │   ├── footer.py             Pied de page (sources, équipe, copyright)
+│   │   ├── kpi_card.py           Carte d'indicateur clé
+│   │   └── charts_theme.py       Helper apply_theme() pour les figures Plotly
 │   │
-│   ├── components/                  # Composants Dash réutilisables
-│   │   ├── __init__.py
-│   │   ├── header.py               # En-tête du dashboard
-│   │   ├── navbar.py               # Barre de navigation
-│   │   ├── footer.py               # Pied de page
-│   │   ├── histogram.py            # Graphique histogramme (REQUIS)
-│   │   └── geomap.py               # Carte géolocalisée (REQUIS)
+│   ├── pages/                    Pages multi-pages
+│   │   ├── home.py               Vue d'ensemble : KPIs + 2 graphiques
+│   │   ├── analysis.py           Explorer (intégration en cours)
+│   │   └── about.py              Méthodologie
 │   │
-│   ├── pages/                       # Pages du dashboard
-│   │   ├── __init__.py
-│   │   ├── home.py                 # Page d'accueil
-│   │   ├── analysis.py             # Page d'analyse (filtres + graphiques)
-│   │   └── about.py                # Page 'À propos'
-│   │
-│   └── utils/                       # Logique métier et données
-│       ├── __init__.py
-│       ├── get_data.py             # Télécharge les données brutes
-│       ├── clean_data.py           # Nettoie et normalise
-│       └── common_functions.py     # Utilitaires partagés
+│   └── utils/                    Backend et utilitaires partagés
+│       ├── get_data.py           Téléchargement idempotent du fichier ADEME
+│       ├── clean_data.py         Pipeline de nettoyage et calcul des totaux
+│       └── common_functions.py   load / filter / aggregate
 │
-├── tests/                           # Tests unitaires
-│   ├── __init__.py
+├── tests/                        Tests unitaires pytest (signatures et docstrings)
 │   ├── test_get_data.py
 │   ├── test_clean_data.py
 │   └── test_common_functions.py
 │
-├── images/                          # Images pour le README (si nécessaire)
-│
-└── .gitignore                       # Fichiers à ignorer dans git
-```
-
-### Flux de données
-
-#### 1. Récupération des données (`get_data.py`)
-
-```
-Internet / API
-    ↓
-download_data()  → DataFrame brut (pas de modification)
-    ↓
-save_raw_data()  → data/raw/rawdata.csv
-```
-
-#### 2. Nettoyage des données (`clean_data.py`)
-
-```
-data/raw/rawdata.csv
-    ↓
-load_raw_data()
-    ↓
-remove_duplicates()
-    ↓
-handle_missing_values()
-    ↓
-normalize_columns()  (renommage, castage types)
-    ↓
-save_cleaned_data()
-    ↓
-data/cleaned/cleaneddata.csv
-```
-
-#### 3. Dashboard (`main.py` + pages + composants)
-
-```
-Backend
-─────────────────────────────
-common_functions.load_cleaned_data()
-    ↓
-common_functions.filter_data()  (critères utilisateur)
-    ↓
-common_functions.aggregate_data()  (calculs pour graphiques)
-    ↓
-Frontend
-─────────────────────────────
-analysis.layout()
-    ├─ dcc.Dropdown() / dcc.Slider()  (filtres)
-    ├─ dcc.Graph("histogram")
-    └─ dcc.Graph("geomap")
-    
-Callbacks
-─────────────────────────────
-@app.callback(Output("histogram", "figure"), Input("filtre", "value"))
-def update_histogram(selected_value):
-    df = load_cleaned_data()
-    df = filter_data(df, ...)
-    return create_histogram(df, ...)
-```
-
-### Ajouter une nouvelle page
-
-1. **Créer le fichier** `src/pages/new_page.py` :
-
-```python
-from dash import html, dcc
-
-def layout() -> html.Div:
-    """Layout de la nouvelle page."""
-    # TODO: implémenter le layout
-    pass
-
-def register_callbacks(app) -> None:
-    """Callbacks spécifiques à cette page."""
-    # TODO: implémenter les callbacks
-    pass
-```
-
-2. **Importer dans `main.py`** :
-
-```python
-from src.pages import home, analysis, about, new_page
-```
-
-3. **Enregistrer les callbacks dans `main.py`** :
-
-```python
-def register_callbacks(app):
-    home.register_callbacks(app)
-    analysis.register_callbacks(app)
-    about.register_callbacks(app)
-    new_page.register_callbacks(app)
-```
-
-4. **Ajouter le lien dans la navbar** (`src/components/navbar.py`)
-
-### Ajouter un nouveau graphique
-
-1. **Créer le composant** `src/components/new_chart.py` :
-
-```python
-import plotly.graph_objects as go
-import pandas as pd
-
-def create_new_chart(df: pd.DataFrame) -> go.Figure:
-    """Crée un nouveau graphique."""
-    # TODO: implémenter avec plotly
-    pass
-```
-
-2. **Utiliser dans une page** (`src/pages/analysis.py`) :
-
-```python
-from src.components.new_chart import create_new_chart
-
-# Dans layout():
-dcc.Graph(id="new-chart", figure=create_new_chart(df))
-```
-
-### Bonnes pratiques d'implémentation
-
-#### Imports
-
-```python
-# Préférer les imports relatifs pour les modules locaux
-from src.utils.common_functions import load_cleaned_data
-from src.components.histogram import create_histogram
-
-# Les imports absolus pour les packages externes
-import pandas as pd
-import plotly.express as px
-```
-
-#### Docstrings et typing
-
-```python
-def ma_fonction(df: pd.DataFrame, colonne: str) -> pd.DataFrame:
-    """
-    Description courte et claire.
-    
-    Args:
-        df: Description du paramètre
-        colonne: Description
-    
-    Returns:
-        Description du retour
-    
-    Raises:
-        ValueError: Si colonne n'existe pas
-    """
-    pass
-```
-
-#### Gestion des erreurs
-
-```python
-try:
-    df = pd.read_csv(config.DATA_CLEAN)
-except FileNotFoundError:
-    print("Erreur: Lancez d'abord 'python -m src.utils.clean_data'")
-except Exception as e:
-    print(f"Erreur imprévue: {e}")
+└── assets/
+    └── style.css                 Design system : tokens, typo, navbar, footer,
+                                  KPI cards, accessibilité (focus-visible,
+                                  prefers-reduced-motion)
 ```
 
 ### Lancer les tests unitaires
 
+Les tests vérifient les signatures, les annotations de type et la
+présence des docstrings sur les fonctions backend.
+
 ```bash
-# Installer pytest (si pas déjà fait)
-python -m pip install pytest
-
-# Lancer tous les tests
-pytest tests/
-
-# Lancer un test spécifique
-pytest tests/test_clean_data.py
+python -m pytest tests/ -v
 ```
+
+### Ajouter une nouvelle page
+
+1. Créer `src/pages/ma_page.py` exposant deux fonctions :
+
+```python
+from dash import html
+from src.components.header import create_header
+
+def layout() -> html.Div:
+    return html.Div(
+        className="page-container",
+        children=[
+            create_header(kicker="Ma page", title="Titre éditorial"),
+            # contenu de la page
+        ],
+    )
+
+def register_callbacks(app) -> None:
+    pass  # callbacks éventuels
+```
+
+2. Référencer la page dans `main.py` :
+
+```python
+from src.pages import home, analysis, about, ma_page
+
+ROUTES = {
+    "/":             home,
+    "/explorer":     analysis,
+    "/methodologie": about,
+    "/ma-page":      ma_page,
+}
+```
+
+3. Ajouter le lien dans la navbar (`src/components/navbar.py`,
+   constante `NAV_LINKS`).
+
+### Ajouter un nouveau graphique Plotly
+
+Tous les graphiques utilisent le helper `apply_theme()` pour garantir une
+cohérence visuelle (palette, typographie, marges, hover) avec le reste
+de l'interface.
+
+```python
+import plotly.express as px
+from src.components.charts_theme import apply_theme, COLORS
+
+def create_my_chart(df):
+    fig = px.line(df, x="annee_reporting", y="total_emissions")
+    fig.update_traces(line=dict(color=COLORS["primary"], width=2.5))
+    return apply_theme(fig, height=380)
+```
+
+### Conventions de code
+
+- Annotations de type sur toutes les fonctions et classes
+- Docstrings au format Google (`Args` / `Returns` / `Raises`)
+- Commentaires en français pour expliquer le _pourquoi_ des choix non triviaux
+- snake_case pour les variables et fonctions, ALL_CAPS pour les constantes
+- Linter recommandé : [`ruff`](https://docs.astral.sh/ruff/)
 
 ---
 
 ## Rapport d'analyse
 
-**A REMPLIR** : Cette section doit contenir les conclusions extraites des données.
+### Synthèse exécutive
 
-### 1. Résumé exécutif
+Sur la période 2009 — 2026, **9 991 bilans BEGES** ont été publiés en France
+par **6 817 organisations distinctes**, totalisant **7,8 Gt CO₂eq** déclarées.
+Le rythme des publications annuelles a été multiplié par plus de vingt depuis
+2014, principalement porté par l'élargissement progressif des obligations
+réglementaires (loi Grenelle II, loi Climat et Résilience).
 
-<!-- Résumé en 2-3 phrases du sujet et des principal conclusions -->
+Trois constats structurent cette analyse :
 
-### 2. Questions clés explorées
+1. **Forte concentration géographique** : l'Île-de-France représente à elle
+   seule 63 % des émissions cumulées déclarées, devant l'Occitanie (11 %)
+   et les Hauts-de-France (5 %).
+2. **Distribution extrêmement asymétrique** : la médiane des bilans
+   (5 600 tCO₂eq) est près de 600 000 fois inférieure au plus gros
+   déclarant (3,3 milliards de tCO₂eq). Cela impose une lecture en échelle
+   logarithmique pour visualiser la distribution.
+3. **Domination des entreprises** : 70 % des bilans publiés émanent
+   d'entreprises privées, suivies par les établissements publics (17 %)
+   et les collectivités territoriales (7 %).
 
-- **Question 1 ?**
-  - Conclusion : ...
-  
-- **Question 2 ?**
-  - Conclusion : ...
+### Ampleur et concentration géographique
 
-### 3. Visualisations principales
+Top 5 des régions par émissions cumulées déclarées :
 
-#### Histogramme
-- Qu'observe-t-on ?
-- Quels sont les patterns/distribution ?
-- Quelle colonne est représentée ?
+| Région | Émissions cumulées | Part du total |
+|---|---|---|
+| Île-de-France | 4,95 Gt CO₂eq | 63,3 % |
+| Occitanie | 0,86 Gt CO₂eq | 11,0 % |
+| Hauts-de-France | 0,39 Gt CO₂eq | 5,0 % |
+| Nouvelle-Aquitaine | 0,32 Gt CO₂eq | 4,1 % |
+| Pays de la Loire | 0,26 Gt CO₂eq | 3,3 % |
 
-#### Carte géolocalisée
-- Quelles régions/pays ressortent ?
-- Quelles corrélations géographiques observe-t-on ?
+Cette concentration s'explique par la densité des sièges sociaux d'entreprises
+en Île-de-France et par la présence de quelques très grands déclarants
+industriels (énergie, transport, métallurgie) dont l'empreinte carbone
+remonte au siège francilien plutôt qu'aux sites de production.
 
-### 4. Insights clés
+### Profil des organisations déclarantes
 
-- **Point clé 1** : ...
-- **Point clé 2** : ...
-- **Point clé 3** : ...
+| Type de structure | Part des bilans |
+|---|---|
+| Entreprise | 70,4 % |
+| Établissement public | 16,8 % |
+| Collectivité territoriale (dont EPCI) | 6,6 % |
+| État | 3,4 % |
+| Association | 2,8 % |
 
-### 5. Limitations et hypothèses
+Les huit secteurs NAF qui produisent le plus de bilans :
 
-- Limitation 1 : ...
-- Hypothèse 1 : ...
+| Secteur | Nombre de bilans |
+|---|---|
+| Activités hospitalières | 1 012 |
+| Ingénierie, études techniques | 245 |
+| Autres intermédiations monétaires | 217 |
+| Conseil en systèmes et logiciels informatiques | 215 |
+| Enseignement supérieur | 209 |
+| Activités des sièges sociaux | 198 |
+| Administration publique générale | 196 |
+| Action sociale sans hébergement n.c.a. | 182 |
+
+Les hôpitaux dominent largement le palmarès des secteurs déclarants : leur
+forte intensité énergétique combinée à une obligation réglementaire claire
+en fait l'un des secteurs les plus matures sur la déclaration BEGES.
+
+### Distribution des émissions
+
+| Statistique | Valeur (tCO₂eq) |
+|---|---|
+| Médiane | 5 652 |
+| Moyenne | 783 633 |
+| Maximum | 3 294 258 459 |
+| Ratio max / médiane | × 582 873 |
+
+L'écart entre médiane et moyenne (rapport 1 : 139) traduit l'asymétrie
+extrême de la distribution. Quelques très gros émetteurs industriels (raffinage,
+sidérurgie, énergie) tirent fortement la moyenne vers le haut. La page
+Explorer du dashboard utilise une échelle logarithmique sur l'axe X pour
+rendre la distribution lisible.
+
+### Limites et précautions de lecture
+
+- **Couverture incomplète des Scope 3** : certaines colonnes du référentiel
+  ne sont pas systématiquement renseignées. Les valeurs manquantes sont
+  conservées en `NaN` (non en zéro) pour ne pas fausser les agrégations.
+- **Sur-représentation des sièges sociaux** : la déclaration se fait au
+  niveau de l'entité juridique. Une multinationale dont le siège est en
+  Île-de-France verra ses émissions globales rattachées à cette région.
+- **Comparaisons inter-années à manier avec prudence** : entre 2014 et 2024,
+  la méthodologie BEGES a évolué (V4 → V5) et le périmètre obligatoire
+  s'est élargi. Une hausse des émissions déclarées peut traduire un meilleur
+  reporting plutôt qu'une hausse réelle.
+- **Outre-mer** : Nouvelle-Calédonie présente dans le dataset n'apparaît pas
+  sur la carte choroplèthe (non incluse dans le GeoJSON France standard).
 
 ---
 
@@ -472,47 +493,49 @@ pytest tests/test_clean_data.py
 
 ### Déclaration d'originalité
 
-Je déclare sur l'honneur que le code source fourni a été produit par **nous-même** (SAMBA, MOUHAMED),  à l'ai de l'IA générative particulièrement avec Claude Code, à l'exception des lignes énumérées ci-dessous.
+Nous, Samba DIALLO et Mouhamed DIOP, déclarons sur l'honneur que le code
+source de ce projet a été produit par nos soins, à l'exception explicite
+des éléments énumérés ci-dessous. La rédaction du code a été assistée par
+l'agent de codage **Claude Code** (Anthropic), utilisé comme outil
+d'aide au développement et à la documentation. Toutes les lignes
+non explicitement déclarées comme empruntées sont réputées avoir été
+produites par les auteurs (avec ou sans assistance IA).
 
 ### Emprunts déclarés
 
-#### Aucun emprunt déclaré à ce jour
+À ce jour, aucune ligne de code n'a été reprise telle quelle depuis
+des sources externes (Stack Overflow, exemples Plotly, etc.). Les
+références documentaires consultées sont listées ci-dessous, mais
+les implémentations restent originales.
 
-> Toute ligne non déclarée ci-dessus est réputée être produite par l'auteur du projet (SAMBA, MOUHAMED).  
-> L'absence ou l'omission de déclaration sera considérée comme du plagiat.
+### Données externes utilisées
 
-### Ressources externes utilisées
+| Ressource | Source | Usage |
+|---|---|---|
+| Bilans GES | [data.ademe.fr](https://data.ademe.fr/datasets/bilan-ges) | Données primaires du dashboard, Licence Ouverte v2.0 |
+| GeoJSON régions de France (Phase 4) | [france-geojson.gregoiredavid.fr](https://france-geojson.gregoiredavid.fr) | Tracé de la carte choroplèthe (Licence Ouverte) |
 
-| Resource | Lien | Usage |
-|----------|------|-------|
-| Dash documentation | https://dash.plotly.com | Framework web |
-| Plotly documentation | https://plotly.com/python | Graphiques interactifs |
-| Pandas documentation | https://pandas.pydata.org | Manipulation de données |
-| Cours ESIEE | https://perso.esiee.fr | Références pédagogiques |
+### Documentation consultée
 
-### Auteurs du projet
+| Ressource | Lien |
+|---|---|
+| Cours ESIEE — D. Courivaud | https://perso.esiee.fr/~courivad/courses/ |
+| Documentation Dash | https://dash.plotly.com |
+| Documentation Plotly Python | https://plotly.com/python/ |
+| Documentation pandas | https://pandas.pydata.org/docs/ |
+| dash-bootstrap-components | https://dash-bootstrap-components.opensource.faculty.ai/ |
 
-- **SAMBA** - Développement frontend, pages, composants
-- **MOUHAMED** - Développement backend, données, analyses
-
----
-
-## Support et questions
-
-Pour toute question sur le déploiement ou l'utilisation du dashboard :
-
-1. Vérifiez que `python main.py` lance sans erreur
-2. Assurez-vous que `requirements.txt` est installé (`pip check`)
-3. Vérifiez que les données existent : `ls -la data/cleaned/cleaneddata.csv`
-4. Consultez la console pour les messages d'erreur détaillés
+L'omission ou l'absence de déclaration d'un emprunt sera considérée comme
+du plagiat.
 
 ---
 
-## Licence
+## Auteurs
 
-Ce projet utilise des données Open Data sous licence [À SPÉCIFIER]. Cf. section Data ci-dessus.
+Projet réalisé dans le cadre de l'unité **E4-DSIA — Python 2 :
+manipulation de données** à l'ESIEE Paris (année universitaire 2025 — 2026).
 
----
-
-**Dernière mise à jour** : 8 avril 2026  
-**Version** : 1.0
+| Auteur | Rôle | Contact |
+|---|---|---|
+| **Samba DIALLO** | Backend (pipeline de données ADEME, tests, configuration) | samba.diallo@edu.esiee.fr |
+| **Mouhamed DIOP** | Frontend (pages, composants graphiques, design system) | — |
