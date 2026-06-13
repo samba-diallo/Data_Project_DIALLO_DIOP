@@ -42,16 +42,22 @@ référentiel BEGES.
 
 ## Aperçu
 
+![Page d'accueil GES Insight — KPIs nationaux et évolution annuelle](images/vue_d%27ensemble.png)
+
 Le tableau de bord est structuré en trois pages :
 
 - **Vue d'ensemble** — quatre indicateurs clés (bilans, organisations,
   émissions cumulées, période), graphique d'évolution annuelle des
   publications BEGES et donut de répartition par type de structure.
-- **Explorer** — page d'exploration interactive (en cours d'intégration) :
-  carte choroplèthe régionale, histogramme des émissions et décomposition
-  par scope, synchronisés sur trois filtres (année, région, type).
+- **Explorer** — page d'exploration interactive : carte choroplèthe
+  régionale, histogramme des émissions et décomposition par scope,
+  synchronisés sur trois filtres (année, région, type).
 - **Méthodologie** — glossaire du référentiel BEGES, schéma du pipeline
   de données et déclarations de copyright.
+
+| Vue d'ensemble | Explorer | Méthodologie |
+|:---:|:---:|:---:|
+| ![Vue d'ensemble](images/Vue_d%27ensemble1.png) | ![Explorer](images/Analyse_V1.png) | ![Méthodologie](images/Guide_lecture.png) |
 
 Direction artistique : palette terre et vert profond, typographie éditoriale
 (Fraunces serif + DM Sans + JetBrains Mono pour les chiffres tabulaires),
@@ -443,6 +449,14 @@ en Île-de-France et par la présence de quelques très grands déclarants
 industriels (énergie, transport, métallurgie) dont l'empreinte carbone
 remonte au siège francilien plutôt qu'aux sites de production.
 
+![Carte choroplèthe des émissions par région française](images/Carte.png)
+
+Le rythme annuel des publications BEGES traduit la même dynamique
+réglementaire : décollage à partir de 2014, accélération marquée après 2018
+puis pic en 2022-2023 (loi Climat et Résilience).
+
+![Évolution annuelle des bilans GES publiés](images/Evolution.png)
+
 ### Profil des organisations déclarantes
 
 | Type de structure | Part des bilans |
@@ -484,6 +498,8 @@ extrême de la distribution. Quelques très gros émetteurs industriels (raffina
 sidérurgie, énergie) tirent fortement la moyenne vers le haut. La page
 Explorer du dashboard utilise une échelle logarithmique sur l'axe X pour
 rendre la distribution lisible.
+
+![Distribution des émissions par bilan — échelle logarithmique](images/distribution.png)
 
 ### Limites et précautions de lecture
 

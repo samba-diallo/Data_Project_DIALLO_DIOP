@@ -1,0 +1,112 @@
+# Configuration du projet GES Insight (PEP 621).
+# Fichier source unique de vérité pour les dépendances et les métadonnées
+# — remplace la combinaison historique setup.py + requirements.txt.
+#
+# Procédure d'installation imposée par le cahier des charges :
+#   $ uv sync
+#   $ uv run python main.py
+#
+# Doc : https://packaging.python.org/en/latest/specifications/pyproject-toml/
+# Doc uv : https://docs.astral.sh/uv/
+
+[project]
+name = "ges-insight"
+version = "1.0.0"
+description = "Tableau de bord interactif des Bilans Carbone réglementaires (BEGES) publiés sur la plateforme ADEME."
+readme = "README.md"
+# Python 3.9 minimum pour aligner sur la matrice CI (3.9 / 3.10 / 3.11).
+# La syntaxe PEP 604 du code (`X | None`) est rendue compatible par
+# `from __future__ import annotations` dans les modules concernés.
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+authors = [
+    { name = "Samba DIALLO", email = "samba.diallo@edu.esiee.fr" },
+    { name = "Mouhamed DIOP", email = "mouhamed.diop@edu.esiee.fr" },
+]
+
+keywords = ["dashboard", "dash", "plotly", "ges", "beges", "ademe", "carbone"]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: Dash",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+
+# Dépendances de production strictement requises pour faire tourner le
+# dashboard. Bornes hautes laxes (<3, <6) pour éviter qu'un major
+# breaking de l'écosystème ne casse l'installation, sans figer le
+# minor exact (ce rôle revient à uv.lock).
+dependencies = [
+    # Web framework principal du dashboard.
+    "dash>=2.5,<3.0",
+    # Grille Bootstrap + composants UI (Container, NavbarSimple, Card).
+    "dash-bootstrap-components>=1.5,<2.0",
+    # Icônes SVG (Tabler, Lucide) — alternative aux emoji.
+    "dash-iconify>=0.1,<1.0",
+    # Backend graphique.
+    "plotly>=5.0,<6.0",
+    # Manipulation tabulaire (DataFrame, agrégations, IO CSV/SQL/XLSX).
+    "pandas>=1.5,<3.0",
+    # Lecture du fichier xlsx ADEME (download_data dans get_data.py).
+    "openpyxl>=3.1,<4.0",
+    # Serveur WSGI de production utilisé sur Render (gunicorn main:server).
+    "gunicorn>=20.1,<21.0",
+]
+
+[project.optional-dependencies]
+# Dépendances de développement et de CI : pytest pour la suite de tests
+# unitaires, ruff pour le linting (recommandé par le prof).
+dev = [
+    "pytest>=7.0,<8.0",
+    "ruff>=0.1,<1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/samba-diallo/Data_Project_DIALLO_DIOP"
+"Démo en ligne" = "https://ges-insight.onrender.com"
+Repository = "https://github.com/samba-diallo/Data_Project_DIALLO_DIOP"
+
+
+# ─────────────────────────────────────────────────────────────────
+# Configuration uv : gestionnaire d'environnement et de dépendances
+# imposé par le cahier des charges du projet.
+# ─────────────────────────────────────────────────────────────────
+[tool.uv]
+# Réutilise le dossier .venv standard pour ne pas perturber les IDE
+# (déjà ignoré par .gitignore).
+managed = true
+
+
+# ─────────────────────────────────────────────────────────────────
+# Configuration pytest : racine du discovery + verbosité raisonnable.
+# Sans cette section, pytest fonctionne aussi (defaults), mais on rend
+# le comportement explicite pour les correcteurs.
+# ─────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+
+# ─────────────────────────────────────────────────────────────────
+# Configuration ruff : linter recommandé par le prof.
+# ─────────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+# Règles activées : E/W (pycodestyle), F (pyflakes), I (isort).
+# Suffisant pour un projet académique sans bruit excessif.
+select = ["E", "W", "F", "I"]
+ignore = [
+    # E501 désactivé : on gère la longueur de ligne au cas par cas
+    # plutôt que de tronquer des docstrings explicatifs.
+    "E501",
+]

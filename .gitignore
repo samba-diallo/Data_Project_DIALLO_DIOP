@@ -26,3 +26,6 @@ CLAUDE.md
 .DS_Store
 Thumbs.db
 Plan_Projet_Data_DIOP_DIALLO.xlsx
+
+# Outils externes (configs locales d'analyseurs de type)
+pyrefly.toml
