@@ -1,111 +1,90 @@
 """
-Point d'entrée du dashboard GES Insight.
-Lance le serveur Dash après avoir câblé le routing multi-pages,
-les composants partagés (navbar, footer) et les callbacks de chaque page.
+Point d'entrée principal de l'application GES Insight.
+Ce fichier configure et démarre le serveur web Dash, charge la structure
+globale de l'interface (en-tête, navigation, contenu, pied de page)
+et gère le routage entre les différentes pages de l'application.
 
-Usage :
+Lancement local :
     $ python main.py
 """
 
-# Permet la syntaxe d'annotations PEP 604 (X | None) et PEP 585
-# (list[str], dict[str, ...]) sur Python 3.9 — les annotations sont
-# évaluées comme des chaînes et n'imposent plus la version 3.10+.
 from __future__ import annotations
 
-# dash : framework principal du dashboard
+from typing import Any
+
+# Importation du framework de dashboarding Dash
 import dash
 from dash import html, dcc, Input, Output
 
-# dash-bootstrap-components : fournit la feuille de style Bootstrap pour
-# les classes utilitaires (d-flex, row, col-md-X, gap-X) utilisées dans
-# nos composants.
+# Importation de la bibliothèque de composants Bootstrap pour le style et la mise en page
 import dash_bootstrap_components as dbc
 
-# Configuration centralisée (titre, host, port, debug)
+# Importation du fichier de configuration globale du projet
 import config
 
-# Composants partagés affichés sur toutes les pages
+# Importation des composants d'interface partagés
 from src.components.navbar import create_navbar
 from src.components.footer import create_footer
 
-# Pages du dashboard - chacune expose layout() et register_callbacks()
+# Importation des contrôleurs de pages (modules python de pages)
 from src.pages import home, analysis, about
 
-
-# ─────────────────────────────────────────────────────────────────
-# CONFIGURATION DU ROUTING
-# ─────────────────────────────────────────────────────────────────
-
-# Mapping URL -> module de page. Ajouter une nouvelle page consiste à :
-#   1) créer src/pages/ma_page.py exposant layout() et register_callbacks()
-#   2) ajouter une ligne dans ce dict
-#   3) ajouter l'entrée correspondante dans NAV_LINKS de navbar.py
-ROUTES: dict[str, object] = {
+# ── Configuration du Routage de l'Application ──────────────────
+# Dictionnaire associant les chemins d'URL aux modules correspondants.
+# Pour ajouter une page :
+#   1) Créer un fichier de page dans src/pages/
+#   2) Définir les fonctions layout() et register_callbacks()
+#   3) Ajouter la route correspondante ci-dessous
+ROUTES: dict[str, Any] = {
     "/":             home,
     "/explorer":     analysis,
     "/methodologie": about,
 }
 
 
-# ─────────────────────────────────────────────────────────────────
-# CONSTRUCTION DE L'APPLICATION
-# ─────────────────────────────────────────────────────────────────
-
 def create_app() -> dash.Dash:
     """
-    Crée et configure l'instance Dash de l'application.
+    Instancie et configure l'application Dash.
 
     Returns:
-        dash.Dash: Instance Dash prête à recevoir layout et callbacks.
+        dash.Dash: Instance de l'application configurée.
     """
-    # external_stylesheets : on charge la CSS Bootstrap pour disposer des
-    # classes utilitaires (grille, flex, espacement). Les fichiers de
-    # assets/ sont chargés automatiquement en complément (style.css).
-    # suppress_callback_exceptions : indispensable en multi-pages, car les
-    # composants ciblés par les callbacks (ex: histogram, geomap) ne sont
-    # pas tous présents dans le DOM au démarrage - ils n'apparaissent qu'à
-    # la navigation vers la page concernée.
+    # Création de l'application en incluant le thème Bootstrap par défaut
+    # suppress_callback_exceptions=True est obligatoire pour le routage multi-pages
+    # car les composants ciblés par les callbacks n'existent pas tous en même temps dans la page.
     app = dash.Dash(
         __name__,
         external_stylesheets=[dbc.themes.BOOTSTRAP],
         title=config.APP_TITLE,
         suppress_callback_exceptions=True,
-        # update_title=None désactive le "Updating..." dans l'onglet du
-        # navigateur pendant les callbacks (rendu plus pro).
-        update_title=None,
+        # update_title=None désactive l'affichage automatique de "Updating..." dans l'onglet
+        update_title=None,  # pyrefly: ignore
     )
     return app
 
 
 def define_layout(app: dash.Dash) -> None:
     """
-    Définit le layout principal de l'application.
-    Structure : navbar fixe en haut, contenu de page au centre, footer en bas.
-    Le contenu de page est injecté dynamiquement par le callback de routing.
+    Définit l'agencement ou gabarit global de l'application.
+    Ce gabarit est identique pour chaque page visitée.
 
     Args:
         app (dash.Dash): Instance de l'application Dash.
-
-    Returns:
-        None
     """
-    # Le layout global est commun à toutes les pages. Seul le contenu du
-    # html.Main(id="page-content") change selon l'URL.
+    # Le composant Location écoute les changements d'adresse URL dans le navigateur
+    # Le contenu de la balise Main (id="page-content") sera mis à jour par le routeur
     app.layout = html.Div(
         children=[
-            # dcc.Location : composant invisible qui écoute l'URL du navigateur.
-            # Sa propriété "pathname" sera l'input du callback de routing.
+            # Suivi de la navigation de l'utilisateur
             dcc.Location(id="url", refresh=False),
 
-            # Navbar : composant partagé, identique sur toutes les pages
+            # Barre de navigation supérieure commune
             create_navbar(),
 
-            # Container où sera injecté le layout de la page courante.
-            # html.Main : balise sémantique HTML5 pour le contenu principal
-            # (meilleure accessibilité que html.Div).
+            # Conteneur principal dans lequel s'affichera le contenu de chaque page
             html.Main(id="page-content"),
 
-            # Footer : composant partagé, identique sur toutes les pages
+            # Pied de page informatif commun
             create_footer(),
         ],
     )
@@ -113,60 +92,57 @@ def define_layout(app: dash.Dash) -> None:
 
 def register_callbacks(app: dash.Dash) -> None:
     """
-    Enregistre tous les callbacks Dash de l'application.
-    Inclut le callback de routing (URL -> contenu de page) et délègue
-    aux modules de pages pour leurs callbacks spécifiques.
+    Enregistre les mécanismes d'interactivité (les callbacks) de l'application.
+    Gère notamment le chargement dynamique des pages lors d'un clic sur un lien.
 
     Args:
         app (dash.Dash): Instance de l'application Dash.
-
-    Returns:
-        None
     """
 
-    # ── Callback de routing ─────────────────────────────────────
-    # Déclenché à chaque changement d'URL. Sélectionne le bon module
-    # de page dans ROUTES et appelle son layout().
+    # ── Callback de Routage Dynamique ─────────────────────────────
+    # Déclenché dès que l'adresse URL du navigateur change
     @app.callback(
         Output("page-content", "children"),
         Input("url", "pathname"),
     )
-    def display_page(pathname: str | None):
-        """Renvoie le layout correspondant à l'URL demandée."""
-        # Si l'URL ne correspond à aucune route connue, on retombe sur la
-        # page d'accueil (comportement classique des SPA pour éviter
-        # une page d'erreur disgracieuse).
+    def display_page(pathname: str | None) -> Any:
+        """
+        Détermine et renvoie la mise en page à afficher selon l'URL.
+
+        Args:
+            pathname (str | None): Chemin d'accès demandé.
+
+        Returns:
+            Any: Contenu graphique de la page à injecter.
+        """
+        # Si le chemin demandé n'existe pas, on redirige par défaut vers la page d'accueil (home)
         page_module = ROUTES.get(pathname or "/", home)
         return page_module.layout()
 
-    # ── Callbacks spécifiques aux pages ────────────────────────
-    # Chaque page enregistre ses propres callbacks (filtres, dropdowns...)
-    # via sa fonction register_callbacks(app). Cette délégation évite que
-    # main.py connaisse les détails de chaque page.
+    # ── Enregistrement des callbacks de chaque page ──────────────
+    # Permet de lier l'interactivité propre à chaque page (recherches, filtres, graphiques)
     for page_module in (home, analysis, about):
         page_module.register_callbacks(app)
 
 
-# Construction en 3 étapes claires : création -> layout -> callbacks
+# Étape 1 : Création de l'application Dash
 app = create_app()
+
+# Étape 2 : Définition du gabarit graphique commun
 define_layout(app)
+
+# Étape 3 : Liaison des callbacks d'interactivité
 register_callbacks(app)
 
-# Expose le serveur Flask pour les serveurs de production WSGI (comme gunicorn)
+# Exposition de l'instance Flask sous-jacente pour les déploiements de production (Gunicorn)
 server = app.server
 
 
 def main() -> None:
     """
-    Démarre le serveur de développement local.
-
-    Returns:
-        None
+    Fonction principale lançant le serveur web de développement.
     """
-    # app.run() (et non plus app.run_server() qui est déprécié) : nouvelle
-    # méthode préconisée par Dash 2.x. Évite le DeprecationWarning console.
-    # debug, host, port viennent de config.py (pilotables par variables
-    # d'environnement DEBUG, HOST, PORT pour le déploiement).
+    # Lancement du serveur Web local avec les paramètres définis dans config.py
     app.run(
         debug=config.DEBUG_MODE,
         host=config.HOST,
@@ -174,8 +150,6 @@ def main() -> None:
     )
 
 
-# Garde-fou : empêche l'exécution du serveur si main.py est importé par
-# un autre module (ex: tests).
+# Sécurité pour éviter de lancer le serveur si le script est importé ailleurs (ex: tests unitaires)
 if __name__ == "__main__":
     main()
-
