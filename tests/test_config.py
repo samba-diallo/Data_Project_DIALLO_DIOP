@@ -27,23 +27,24 @@ def test_config_base_dir_exists():
 
 def test_config_data_paths_defined():
     """
-    Vérifie que les chemins de données sont définis.
+    Vérifie que les paramètres SQLite (base + noms de tables) sont définis.
+    Le stockage des données est imposé en SQLite par le cahier des charges
+    (une base unique `data/db.sqlite` avec deux tables `raw` et `cleaned`).
     """
-    assert hasattr(config, 'DATA_RAW'), "config.DATA_RAW doit être défini"
-    assert hasattr(config, 'DATA_CLEAN'), "config.DATA_CLEAN doit être défini"
-    assert isinstance(config.DATA_RAW, str), "DATA_RAW doit être une chaîne"
-    assert isinstance(config.DATA_CLEAN, str), "DATA_CLEAN doit être une chaîne"
+    assert hasattr(config, 'DATABASE'), "config.DATABASE doit être défini"
+    assert hasattr(config, 'TABLE_RAW'), "config.TABLE_RAW doit être défini"
+    assert hasattr(config, 'TABLE_CLEAN'), "config.TABLE_CLEAN doit être défini"
+    assert isinstance(config.DATABASE, str), "DATABASE doit être une chaîne"
+    assert isinstance(config.TABLE_RAW, str), "TABLE_RAW doit être une chaîne"
+    assert isinstance(config.TABLE_CLEAN, str), "TABLE_CLEAN doit être une chaîne"
 
 
 def test_config_data_directories_exist():
     """
-    Vérifie que les répertoires data/raw/ et data/cleaned/ existent.
+    Vérifie que le répertoire parent de la base SQLite existe (data/).
     """
-    raw_dir = os.path.dirname(config.DATA_RAW)
-    cleaned_dir = os.path.dirname(config.DATA_CLEAN)
-    
-    assert os.path.isdir(raw_dir), f"Répertoire raw n'existe pas : {raw_dir}"
-    assert os.path.isdir(cleaned_dir), f"Répertoire cleaned n'existe pas : {cleaned_dir}"
+    db_dir = os.path.dirname(config.DATABASE)
+    assert os.path.isdir(db_dir), f"Répertoire data/ n'existe pas : {db_dir}"
 
 
 def test_config_data_url_exists():
