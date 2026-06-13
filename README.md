@@ -592,6 +592,30 @@ phase du projet :
 > Cloudflare Pages et Fly.io pour une app Dash, et propose la
 > configuration minimale pour l'option retenue. »*
 
+> **Phase migration `uv` + SQLite (conformité finale au cahier des charges)** —
+> *« Le prof a mis à jour ses instructions : la procédure d'évaluation
+> est désormais `uv sync && uv run python main.py`, et le stockage doit
+> être centralisé dans une base SQLite unique `data/db.sqlite` (deux
+> tables `raw` et `cleaned`), à la place du couple `bilan-ges.xlsx` +
+> `cleaneddata.csv`. Aide-nous à : (1) rédiger un `pyproject.toml` PEP 621
+> reprenant nos dépendances actuelles plus les bornes de version ; (2)
+> migrer `get_data.py`, `clean_data.py` et `common_functions.py` vers
+> `sqlite3` + `pandas.to_sql` / `read_sql_query` ; (3) adapter les tests
+> de `test_config.py` qui asserent encore les anciennes constantes
+> `DATA_RAW` / `DATA_CLEAN`. »*
+
+Concrètement, les fichiers suivants ont été co-rédigés avec Claude Code
+à partir des décisions et contraintes que nous lui avions soumises :
+
+- **`pyproject.toml`** — métadonnées PEP 621, bornes de version
+  pandas / dash / plotly choisies par nous, configuration de `ruff` et
+  `pytest`.
+- **`uv.lock`** — généré automatiquement par `uv lock` à partir de
+  `pyproject.toml` (aucune intervention manuelle).
+- **`data/db.sqlite`** — base produite par l'exécution de notre pipeline
+  `get_data.py` + `clean_data.py` (le contenu provient intégralement
+  des données ouvertes ADEME, pas de l'IA).
+
 ### Exemples de code dont nous sommes à l'origine
 
 Au-delà des prompts ci-dessus, plusieurs blocs reflètent directement des
