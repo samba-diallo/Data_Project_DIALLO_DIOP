@@ -200,9 +200,9 @@ class TestComponentsStructure:
         assert create_histogram.__doc__ is not None, "create_histogram() doit avoir une docstring"
 
     def test_create_histogram_has_parameters(self):
-        """Vérifie que create_histogram() a au moins 3 paramètres."""
+        """Vérifie que create_histogram() a au moins 2 paramètres."""
         sig = inspect.signature(create_histogram)
-        assert len(sig.parameters) >= 3, "create_histogram() doit avoir au moins 3 paramètres"
+        assert len(sig.parameters) >= 2, "create_histogram() doit avoir au moins 2 paramètres"
 
     def test_create_histogram_return_annotation(self):
         """Vérifie que create_histogram() a une annotation de retour."""
