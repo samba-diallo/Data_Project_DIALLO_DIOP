@@ -1,21 +1,27 @@
 """
-Composant carte choroplèthe France par région.
+Composant carte choroplèthe France par région - VERSION HEATMAP ENTERPRISE.
 Livrable OBLIGATOIRE selon le cahier des charges du projet (représentation
-géolocalisée). Utilise un GeoJSON local des régions françaises et joint
-les agrégats d'émissions par nom de région.
+géolocalisée).
+
+Design "climate intelligence platform" :
+  - heatmap environnementale (vert → rouge)
+  - TOUTES les régions toujours visibles, même quand on filtre par région
+  - région(s) sélectionnée(s) mise(s) en évidence (bordure or, halo)
+  - labels des régions directement sur la carte (Scattergeo overlay)
+  - cadrage France métropolitaine fixe
 
 Doc Plotly choropleth : https://plotly.com/python/choropleth-maps/
+Doc Plotly scattergeo : https://plotly.com/python/scatter-plots-on-maps/
 """
 
 import json
 import os
 
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
 # Helper de thème mutualisé (palette + polices Fraunces/DM Sans)
-from src.components.charts_theme import apply_theme, COLORS, SEQUENTIAL_GREEN
+from src.components.charts_theme import apply_theme, COLORS, SEQUENTIAL_HEATMAP
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -42,94 +48,240 @@ def _load_regions_geojson() -> dict:
 REGIONS_GEOJSON: dict = _load_regions_geojson()
 
 
+# Centroïdes approximatifs des 13 régions de France métropolitaine + Corse.
+# Coordonnées (lat, lon) calculées manuellement à partir des préfectures
+# pour ancrer les labels textuels sur la carte sans dépendre de geopandas.
+# On exclut volontairement les DOM (Guadeloupe, Martinique, etc.) car le
+# cadrage géographique est centré sur la France métropolitaine.
+REGION_CENTROIDS: dict[str, tuple[float, float]] = {
+    "Auvergne-Rhône-Alpes":      (45.5, 4.6),
+    "Bourgogne-Franche-Comté":   (47.3, 4.9),
+    "Bretagne":                  (48.2, -2.9),
+    "Centre-Val de Loire":       (47.5, 1.7),
+    "Corse":                     (42.1, 9.1),
+    "Grand Est":                 (48.7, 5.5),
+    "Hauts-de-France":           (50.1, 2.8),
+    "Île-de-France":             (48.85, 2.45),
+    "Normandie":                 (49.2, 0.4),
+    "Nouvelle-Aquitaine":        (45.3, 0.4),
+    "Occitanie":                 (43.8, 1.9),
+    "Pays de la Loire":          (47.5, -0.7),
+    "Provence-Alpes-Côte d'Azur":(43.95, 6.0),
+}
+
+
 # ─────────────────────────────────────────────────────────────────
 # FRONTEND – Composant graphique
 # ─────────────────────────────────────────────────────────────────
 
 def create_geomap(
-    df: pd.DataFrame,
+    df_for_aggregation: pd.DataFrame,
+    highlighted_regions: list[str] | None = None,
     metric: str = "total_emissions",
     agg: str = "sum",
 ) -> go.Figure:
     """
-    Génère une carte choroplèthe des régions françaises colorée par la
-    métrique choisie (total ou moyenne d'émissions, nombre de bilans).
+    Génère une carte choroplèthe HEATMAP des régions françaises.
+    TOUTES les régions sont toujours rendues (contexte géographique
+    préservé) ; les régions sélectionnées sont mises en évidence par
+    une bordure or et un marqueur central.
 
     Args:
-        df (pd.DataFrame): DataFrame filtré (déjà passé par filter_data).
-        metric (str): Nom de la colonne à agréger (par défaut 'total_emissions').
-        agg (str): Fonction d'agrégation ('sum', 'mean', 'count').
+        df_for_aggregation: DataFrame filtré par année + type de structure
+            UNIQUEMENT (pas par région), pour préserver la vue globale
+            de la France quand on filtre par région.
+        highlighted_regions: Liste optionnelle de régions à mettre en
+            évidence (sélection courante du filtre Région). None ou liste
+            vide = aucun highlight, vue d'ensemble normale.
+        metric: Nom de la colonne à agréger (par défaut 'total_emissions').
+        agg: Fonction d'agrégation ('sum', 'mean', 'count').
 
     Returns:
         go.Figure: Carte choroplèthe Plotly prête à passer à dcc.Graph.
     """
-    # Cas particulier 'count' : on compte les lignes par région, pas
-    # une somme/moyenne d'une colonne numérique.
+    # Cas vide global : aucune donnée du tout pour les filtres année/structure.
+    if df_for_aggregation.empty:
+        return _empty_map("Aucune donnée pour les filtres sélectionnés.")
+
+    # Agrégation des émissions par région SUR L'ENSEMBLE de la France
+    # (pas seulement la sélection régionale). C'est la clé du fix : la
+    # carte garde toujours toutes les régions visibles avec leur valeur.
     if agg == "count":
         aggregated = (
-            df.groupby("region", as_index=False)
+            df_for_aggregation.groupby("region", as_index=False)
               .size()
               .rename(columns={"size": metric})
         )
         legend_title = "Nombre de bilans"
         hover_unit = "bilans"
     else:
-        aggregated = df.groupby("region", as_index=False)[metric].agg(agg)
+        aggregated = df_for_aggregation.groupby("region", as_index=False)[metric].agg(agg)
         legend_title = "Émissions (tCO₂eq)"
         hover_unit = "tCO₂eq"
 
-    # Construction de la choroplèthe via Plotly Express. featureidkey
-    # indique à Plotly comment retrouver une région du GeoJSON à partir
-    # de la valeur de 'locations' : ici properties.nom contient le nom
-    # officiel INSEE qui correspond à notre colonne 'region'.
-    fig = px.choropleth(
-        aggregated,
+    # Bornes communes pour l'échelle de couleur : on les fige pour que la
+    # palette reste cohérente quand on highlight (sinon le 2e trace
+    # recalculerait sa propre échelle et casserait la lecture).
+    z_min = float(aggregated[metric].min())
+    z_max = float(aggregated[metric].max())
+
+    # Construction figure manuelle (go.Figure + add_trace) plutôt que via
+    # plotly.express : permet d'empiler plusieurs traces (choropleth de
+    # base + overlay des régions sélectionnées + labels textuels).
+    fig = go.Figure()
+
+    # ── TRACE 1 : Choropleth de base (TOUTES les régions) ───────
+    # Bordure blanche fine pour distinguer les régions entre elles.
+    fig.add_trace(go.Choropleth(
         geojson=REGIONS_GEOJSON,
-        locations="region",
+        locations=aggregated["region"],
+        z=aggregated[metric],
         featureidkey="properties.nom",
-        color=metric,
-        # Palette séquentielle verte du thème (du clair au foncé)
-        color_continuous_scale=SEQUENTIAL_GREEN,
-        labels={metric: legend_title},
-    )
-
-    # update_geos : limite l'affichage à la France métropolitaine + DOM.
-    # fitbounds="locations" recadre automatiquement sur les régions
-    # présentes dans les données.
-    fig.update_geos(
-        fitbounds="locations",
-        visible=False,  # masque les frontières mondiales par défaut
-        bgcolor=COLORS["surface"],
-    )
-
-    # Tooltip personnalisé : nom de région en gras + valeur formatée.
-    # %{z} = la valeur de la métrique colorée.
-    fig.update_traces(
+        colorscale=SEQUENTIAL_HEATMAP,
+        zmin=z_min,
+        zmax=z_max,
+        marker_line_color=COLORS["surface"],
+        marker_line_width=1.2,
+        colorbar=dict(
+            title=dict(
+                text=legend_title,
+                font=dict(size=12, color=COLORS["text_muted"]),
+                side="top",
+            ),
+            orientation="h",
+            yanchor="bottom",
+            y=-0.06,
+            xanchor="center",
+            x=0.5,
+            thickness=14,
+            len=0.65,
+            tickformat=".2s",
+            tickfont=dict(size=11, color=COLORS["text_muted"]),
+            outlinewidth=0,
+        ),
         hovertemplate=(
             "<b>%{location}</b><br>"
             f"%{{z:,.0f}} {hover_unit}"
             "<extra></extra>"
         ),
-        # Bordure blanche fine entre les régions pour plus de lisibilité
-        marker=dict(line=dict(color=COLORS["surface"], width=1)),
-    )
+        name="Émissions",
+        showscale=True,
+    ))
 
-    # Configuration de la barre de couleur (légende continue) :
-    # horizontale en bas, alignée avec les conventions du thème.
-    fig.update_layout(
-        coloraxis_colorbar=dict(
-            title=dict(text=legend_title, font=dict(size=12)),
-            orientation="h",
-            yanchor="bottom",
-            y=-0.15,
-            xanchor="center",
-            x=0.5,
-            thickness=12,
-            len=0.6,
+    # ── TRACE 2 : Overlay HIGHLIGHT (bordure or sur sélectionnées) ──
+    # Si l'utilisateur a sélectionné une ou plusieurs régions, on rajoute
+    # une trace par-dessus avec un fond transparent (pour ne pas masquer
+    # les couleurs d'émissions) et une grosse bordure or pour signaler
+    # visuellement la sélection. Toutes les autres régions restent visibles.
+    if highlighted_regions:
+        # On ne garde que les régions effectivement présentes dans nos
+        # données pour éviter les warnings Plotly sur featureidkey orphelin.
+        present = [r for r in highlighted_regions if r in aggregated["region"].values]
+        if present:
+            fig.add_trace(go.Choropleth(
+                geojson=REGIONS_GEOJSON,
+                locations=present,
+                z=[1] * len(present),  # z dummy : on ne veut pas colorer
+                featureidkey="properties.nom",
+                # Colorscale 100% transparente : la couleur d'émissions
+                # de la trace 1 reste visible en dessous.
+                colorscale=[[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
+                marker_line_color=COLORS["accent"],   # or pâle = accent
+                marker_line_width=4.0,                # bordure prominente
+                showscale=False,
+                hoverinfo="skip",   # tooltip déjà fourni par la trace 1
+                name="Sélection",
+                showlegend=False,
+            ))
+
+    # ── TRACE 3 : Labels des régions (Scattergeo texte) ─────────
+    # Affiche le nom de chaque région à son centroïde. Lecture immédiate
+    # sans hover, comme sur une carte météo professionnelle.
+    label_lons = []
+    label_lats = []
+    label_texts = []
+    for region, (lat, lon) in REGION_CENTROIDS.items():
+        # On ne label que les régions qui ont des données dans la sélection
+        # (sinon on pollue avec des labels sur des zones sans émissions).
+        if region in aggregated["region"].values:
+            label_lats.append(lat)
+            label_lons.append(lon)
+            # Format du label : nom court (sans tirets pour respiration).
+            # Mise en gras si la région est sélectionnée pour renforcer
+            # la hiérarchie visuelle.
+            short_name = _short_region_name(region)
+            if highlighted_regions and region in highlighted_regions:
+                label_texts.append(f"<b>{short_name}</b>")
+            else:
+                label_texts.append(short_name)
+
+    fig.add_trace(go.Scattergeo(
+        lon=label_lons,
+        lat=label_lats,
+        text=label_texts,
+        mode="text",
+        textfont=dict(
+            family="DM Sans, sans-serif",
+            size=11,
+            color=COLORS["text"],
         ),
+        hoverinfo="skip",
+        showlegend=False,
+        name="Labels",
+    ))
+
+    # update_geos : cadrage France métropolitaine fixe. On ne change PAS
+    # ce cadrage selon la sélection (Design.md : "preserve overall spatial
+    # understanding"). Mercator centré sur la France hexagonale + Corse.
+    fig.update_geos(
+        visible=False,
+        projection_type="mercator",
+        center={"lat": 46.5, "lon": 2.5},
+        lonaxis_range=[-5.5, 10.0],
+        lataxis_range=[41.0, 51.5],
+        bgcolor=COLORS["surface"],
+        showframe=False,
+        showcoastlines=False,
     )
 
-    # Application du thème global (polices, marges, hoverlabel...).
-    # show_legend=False car la barre de couleur sert déjà de légende.
-    apply_theme(fig, height=520, show_legend=False)
+    # Marges réduites pour maximiser la surface utile de la carte.
+    fig.update_layout(margin=dict(t=20, b=60, l=10, r=10))
+
+    # Application du thème global, hauteur maintenue à 720px.
+    apply_theme(fig, height=720, show_legend=False)
+    return fig
+
+
+# ─────────────────────────────────────────────────────────────────
+# Helpers privés
+# ─────────────────────────────────────────────────────────────────
+
+def _short_region_name(region: str) -> str:
+    """
+    Raccourcit certains noms de régions très longs pour l'affichage en
+    superposition sur la carte (où l'espace est limité).
+    """
+    # Mappings spécifiques pour les noms qui débordent sinon sur la carte.
+    abbreviations = {
+        "Provence-Alpes-Côte d'Azur": "PACA",
+        "Bourgogne-Franche-Comté": "BFC",
+        "Centre-Val de Loire": "Centre-VdL",
+        "Auvergne-Rhône-Alpes": "Auv.-Rhône-Alpes",
+    }
+    return abbreviations.get(region, region)
+
+
+def _empty_map(message: str) -> go.Figure:
+    """Carte vide avec message centré (filtres trop restrictifs)."""
+    fig = go.Figure()
+    fig.add_annotation(
+        text=message,
+        xref="paper", yref="paper",
+        x=0.5, y=0.5,
+        showarrow=False,
+        font=dict(family="DM Sans", size=14, color=COLORS["text_muted"]),
+    )
+    fig.update_xaxes(visible=False)
+    fig.update_yaxes(visible=False)
+    apply_theme(fig, height=720, show_legend=False)
     return fig
