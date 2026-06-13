@@ -1,30 +1,15 @@
 """
-Page 'Explorer' du dashboard GES Insight.
-
-Structure :
-1. Barre de filtres sticky (année, régions, types structures, reset)
-2. Heat timeline (heatmap d'intensité annuelle)
-3. Bandeau KPI (5 indicateurs contextuels)
-4. Carte choroplèthe (France complète toujours visible)
-5. Inspecteur d'organisations (recherche + détail bilan)
-6. Histogramme multi-vues (top organisations, paliers, secteurs)
-
-
-Architecture de filtrage à 2 niveaux :
-- df_year_struct : filtres année + structure (toutes régions visibles)
-  -> pour la carte et heat timeline (contexte national)
-- df_full : df_year_struct + filtre région (sélection complète)
-  -> pour histogramme, scope breakdown, statistiques principales
+Page 'Explorer' du tableau de bord.
+Contient les filtres interactifs, la frise chronologique thermique, le bandeau de statistiques,
+la carte choroplèthe régionale, l'inspecteur d'organisation et l'histogramme de distribution.
+Gère les interactions dynamiques de l'utilisateur par l'intermédiaire des callbacks Dash.
 """
 
 import pandas as pd
-
 from dash import html, dcc, Input, Output
-
-# DashIconify : icônes SVG pour le bandeau de stats
 from dash_iconify import DashIconify
 
-# Composants partagés
+# Importation des composants graphiques et fonctionnels
 from src.components.header import create_header
 from src.components.filters import (
     create_filters_bar,
@@ -49,7 +34,7 @@ from src.components.organization_inspector import (
     INSPECTOR_DETAIL_ID,
 )
 
-# Loader + filtre des données + bornes de période officielles
+# Chargement et filtrage des données
 from src.utils.common_functions import (
     load_cleaned_data,
     filter_data,
@@ -57,7 +42,7 @@ from src.utils.common_functions import (
     YEAR_MAX,
 )
 
-
+# Identifiants des graphiques et blocs de la page
 GRAPH_GEOMAP_ID = "graph-geomap"
 GRAPH_HISTOGRAM_ID = "graph-histogram"
 GRAPH_HEAT_TIMELINE_ID = "graph-heat-timeline"
@@ -65,33 +50,23 @@ STATS_BANNER_ID = "explorer-stats-banner"
 HISTOGRAM_VIEW_TOGGLE_ID = "histogram-view-toggle"
 
 
-# ─────────────────────────────────────────────────────────────────
-# Helper - bandeau de stats contextuelles synchronisé sur les filtres
-# ─────────────────────────────────────────────────────────────────
-
 def _build_stats_banner(
     df_full_selection: pd.DataFrame,
     df_year_struct: pd.DataFrame,
     selected_range: tuple[int, int],
 ) -> list:
     """
-    Construit le bandeau de 5 indicateurs KPI synchronisés avec les filtres.
-
-    Indicateurs :
-    1. Nombre de bilans dans la sélection
-    2. Nombre d'organisations distinctes (SIREN)
-    3. Émissions cumulées
-    4. Tendance d'évolution entre année début et année fin
-    5. Région la plus émettrice (sur le périmètre national filtré)
+    Construit la liste des mini-indicateurs de statistiques.
 
     Args:
-        df_full_selection : DataFrame avec tous les filtres appliqués
-        df_year_struct : DataFrame filtrés par année + structure uniquement
-        selected_range : Tuple (annee_debut, annee_fin) pour tendance
+        df_full_selection (pd.DataFrame): Données avec tous les filtres actifs.
+        df_year_struct (pd.DataFrame): Données filtrées uniquement par année et structure (contexte national).
+        selected_range (tuple[int, int]): Bornes temporelles.
 
     Returns:
-        list : Éléments html.Div à afficher dans le bandeau
+        list: Éléments Dash constituant le bandeau.
     """
+    # Si la sélection courante est vide, renvoyer un avertissement
     if df_full_selection.empty:
         return [
             html.Div(
@@ -100,6 +75,7 @@ def _build_stats_banner(
             ),
         ]
 
+    # Comptages et totaux
     nb_bilans = len(df_full_selection)
     nb_orgs = df_full_selection["siren"].nunique()
     total_t = float(df_full_selection["total_emissions"].sum())
@@ -108,10 +84,12 @@ def _build_stats_banner(
     orgs_str = f"{nb_orgs:,}".replace(",", " ")
     total_str = _format_emissions(total_t)
 
+    # Calcul de la tendance de l'intensité carbone
     evolution_value, evolution_label, evolution_icon, evolution_class = (
         _compute_trend(df_year_struct, selected_range)
     )
 
+    # Détermination de la région la plus émettrice à l'échelle nationale
     if not df_year_struct.empty:
         top_region = (
             df_year_struct.groupby("region")["total_emissions"]
@@ -132,7 +110,7 @@ def _build_stats_banner(
             evolution_label,
             extra_class=evolution_class,
         ),
-        _stat_item("tabler:map-pin", "Région #1", top_region, "la plus émettrice"),
+        _stat_item("tabler:map-pin", "Région #1", str(top_region), "la plus émettrice"),
     ]
 
 
@@ -141,26 +119,25 @@ def _compute_trend(
     selected_range: tuple[int, int],
 ) -> tuple[str, str, str, str]:
     """
-    Calcule la variation d'intensité médiane entre année début et fin.
-
-    Utilise la médiane plutôt que la somme pour éviter les biais
-    dus à l'augmentation du nombre de déclarants au fil des années.
+    Calcule la variation en pourcentage des émissions médianes entre l'année de début et l'année de fin.
 
     Args:
-        df : DataFrame filtré par année et structure
-        selected_range : Tuple (annee_debut, annee_fin)
+        df (pd.DataFrame): Données à analyser.
+        selected_range (tuple[int, int]): Bornes temporelles.
 
     Returns:
-        tuple : (valeur_formatée, label, nom_icone, classe_css)
+        tuple: (pourcentage, libellé de période, nom de l'icône, classe CSS de couleur).
     """
     start_year, end_year = selected_range
 
+    # Cas d'une seule année sélectionnée
     if start_year == end_year:
         return ("—", f"sur l'année {start_year}", "tabler:minus", "stat-trend-neutral")
 
     if df.empty:
         return ("—", f"{start_year} -> {end_year}", "tabler:minus", "stat-trend-neutral")
 
+    # Isolement des émissions strictement positives pour l'année initiale et finale
     start_df = df.loc[
         (df["annee_reporting"] == start_year) & (df["total_emissions"] > 0)
     ]
@@ -171,14 +148,17 @@ def _compute_trend(
     if start_df.empty or end_df.empty:
         return ("n/d", f"{start_year} -> {end_year}", "tabler:minus", "stat-trend-neutral")
 
+    # Calcul de la valeur médiane
     start_median = float(start_df["total_emissions"].median())
     end_median = float(end_df["total_emissions"].median())
 
     if start_median == 0:
         return ("n/d", f"{start_year} -> {end_year}", "tabler:minus", "stat-trend-neutral")
 
+    # Calcul de la dérive en pourcentage
     pct_change = (end_median - start_median) / start_median * 100
 
+    # Détermination de l'icône et des couleurs en fonction du signe de la dérive
     if pct_change > 1:
         icon = "tabler:trending-up"
         css_class = "stat-trend-up"
@@ -199,7 +179,7 @@ def _compute_trend(
 
 
 def _format_emissions(total_t: float) -> str:
-    """Formate des émissions en t/Mt/Gt selon l'ordre de grandeur."""
+    """Formate les tonnes de CO2 en unité adaptée (t, Mt, Gt)."""
     if total_t >= 1_000_000_000:
         return f"{total_t / 1_000_000_000:.1f}".replace(".", ",") + " Gt"
     if total_t >= 1_000_000:
@@ -214,7 +194,7 @@ def _stat_item(
     sublabel: str,
     extra_class: str = "",
 ) -> html.Div:
-    """Construit un item du bandeau de stats (icône + label + valeur + sublabel)."""
+    """Génère le conteneur HTML d'un indicateur de statistiques."""
     return html.Div(
         className=f"stat-item {extra_class}".strip(),
         children=[
@@ -234,29 +214,16 @@ def _stat_item(
     )
 
 
-# ─────────────────────────────────────────────────────────────────
-# FRONTEND – Page
-# ─────────────────────────────────────────────────────────────────
-
 def layout() -> html.Div:
     """
-    Construit le layout complet de la page Explorer.
-
-    Sections (dans l'ordre) :
-    1. Header avec titre et description
-    2. Barre de filtres sticky
-    3. Heat timeline (intensité d'émissions par année)
-    4. Bandeau KPI (5 indicateurs contextuels)
-    5. Carte choroplèthe (France complète)
-    6. Inspecteur d'organisations (recherche + détail)
-    7. Histogramme multi-vues (top orgs, paliers, secteurs)
-
+    Construit le layout structurel de la page d'exploration interactive.
 
     Returns:
-        html.Div : Layout complet de la page
+        html.Div: Composants Dash de la page.
     """
     df = load_cleaned_data()
 
+    # Configurations communes pour les graphiques Plotly
     plotly_config = {
         "displayModeBar": False,
         "displaylogo": False,
@@ -284,8 +251,10 @@ def layout() -> html.Div:
                 ),
             ),
 
+            # Barre de filtrage interactif
             create_filters_bar(df),
 
+            # Section de la frise chronologique thermique
             html.Div(
                 className="heat-timeline-container",
                 children=[
@@ -318,11 +287,13 @@ def layout() -> html.Div:
                 ],
             ),
 
+            # Zone d'affichage du bandeau KPI mis à jour dynamiquement
             html.Div(
                 id=STATS_BANNER_ID,
                 className="stats-banner",
             ),
 
+            # Section de cartographie géographique
             html.Section(
                 className="content-section",
                 children=[
@@ -370,6 +341,7 @@ def layout() -> html.Div:
                 ],
             ),
 
+            # Section de l'inspecteur d'organisations
             html.Section(
                 className="content-section",
                 children=[
@@ -405,6 +377,7 @@ def layout() -> html.Div:
                 ],
             ),
 
+            # Section de distribution des émissions (histogramme multi-vues)
             html.Section(
                 className="content-section",
                 children=[
@@ -476,22 +449,12 @@ def layout() -> html.Div:
     )
 
 
-# ─────────────────────────────────────────────────────────────────
-# CALLBACKS - graphes dynamiques pilotés par les filtres
-# ─────────────────────────────────────────────────────────────────
-
 def register_callbacks(app) -> None:
     """
-    Enregistre les callbacks Dash de la page Explorer.
-
-    Architecture de filtrage à 2 niveaux :
-    - df_year_struct : filtres année + structure (toutes régions visibles)
-      -> pour la carte (France complète) et heat timeline
-    - df_full : df_year_struct + filtre région (sélection complète)
-      -> pour histogramme, scope breakdown, statistiques
+    Enregistre les liaisons d'événements (callbacks) pour la page Explorer.
 
     Args:
-        app : Instance Dash
+        app: L'instance de l'application Dash principale.
     """
 
     @app.callback(
@@ -510,22 +473,23 @@ def register_callbacks(app) -> None:
     )
     def update_charts(year_range, regions, structures, histogram_view):
         """
-        Recalcule tous les graphes et statistiques à chaque changement de filtre.
-
-        Applique d'abord les filtres année + structure pour obtenir df_year_struct
-        (France complète), puis rajoute le filtre région pour df_full.
+        Recalcule l'ensemble des figures et statistiques de la page lors d'un changement de filtre.
         """
         df = load_cleaned_data()
 
+        # Rétablissement de la période par défaut si aucune sélection active
         if not year_range or len(year_range) != 2:
             year_range = [YEAR_MIN, YEAR_MAX]
         start_year, end_year = int(year_range[0]), int(year_range[1])
 
+        # Premier niveau de filtrage : Année et Structure (pour la carte nationale et la frise)
         df_year_struct = df[df["annee_reporting"].between(start_year, end_year)]
         df_year_struct = filter_data(df_year_struct, type_structure=structures)
 
+        # Deuxième niveau de filtrage : Régions (pour l'histogramme et les KPI Cards)
         df_full = filter_data(df_year_struct, region=regions)
 
+        # Données spécifiques aux structures pour piloter l'opacité temporelle globale
         df_struct_only = filter_data(df, type_structure=structures)
 
         geomap_fig = create_geomap(
@@ -553,10 +517,7 @@ def register_callbacks(app) -> None:
     )
     def update_inspector(selected_org):
         """
-        Met à jour le panneau de détail quand une organisation est sélectionnée.
-
-        L'inspecteur affiche le bilan COMPLET sur 2010-2025 (pas filtré par
-        les filtres globaux région/année/structure).
+        Met à jour la fiche d'inspection détaillée d'une organisation sélectionnée.
         """
         if not selected_org:
             return build_org_detail(load_cleaned_data().iloc[0:0], None)
@@ -575,5 +536,7 @@ def register_callbacks(app) -> None:
         prevent_initial_call=True,
     )
     def reset_filters(n_clicks):
-        """Réinitialise tous les filtres à leurs valeurs par défaut."""
+        """
+        Rétablit les filtres interactifs à leurs valeurs par défaut.
+        """
         return [YEAR_MIN, YEAR_MAX], None, None
