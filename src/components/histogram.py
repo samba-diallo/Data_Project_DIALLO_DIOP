@@ -1,41 +1,23 @@
 """
-Composant 'distribution multi-vues' - système d'analyse scalable.
-
-Le dataset contient 6 810 organisations distinctes : un histogramme
-naïf de toutes les barres serait illisible et coûteux en performance.
-Nous proposons donc 3 vues commutables, chacune adaptée à un besoin
-analytique différent :
-
-  1. TOP 15 ORGANISATIONS — qui sont les plus gros émetteurs ?
-  2. PALIERS D'ÉMISSIONS — comment se répartissent les bilans par
-     ordre de grandeur (<1k, 1-10k, 10-100k, 100k-1M, >1M tCO₂eq) ?
-  3. TOP 15 SECTEURS NAF — quels secteurs concentrent les émissions ?
-     (filtre minimum 3 organisations par secteur pour éviter qu'un
-     secteur n'ait qu'une grosse boîte = duplication de la vue Top orgs)
-
-Doc Plotly bar chart : https://plotly.com/python/bar-charts/
+Composant d'histogramme multi-vues (Top organisations, Paliers d'émissions, Secteurs NAF).
+Permet de commuter entre différentes représentations de la distribution des émissions carbone.
 """
 
 import pandas as pd
 import plotly.graph_objects as go
 
+# Importation du thème de styles
 from src.components.charts_theme import apply_theme, COLORS, SEQUENTIAL_HEATMAP
 
-
-# ─────────────────────────────────────────────────────────────────
-# CONSTANTES
-# ─────────────────────────────────────────────────────────────────
-
-# Identifiants des 3 vues (utilisés par le toggle UI dans analysis.py).
+# Constantes d'identifiants de vues
 VIEW_TOP_ORGS = "top_orgs"
 VIEW_BINS = "bins"
 VIEW_SECTORS = "sectors"
 
-# Bornes des paliers d'émissions. Choisies sur les ordres de grandeur
-# observés dans la base : médiane ~5 600 tCO2eq, max > 3 milliards.
-# Chaque palier = facteur 10, qui correspond à une logique business
-# (PME, ETI, grande entreprise, gros groupe industriel).
+# Bornes des paliers d'émissions (en tonnes de CO2 équivalent)
 EMISSION_BINS = [0, 1_000, 10_000, 100_000, 1_000_000, float("inf")]
+
+# Libellés associés aux paliers
 EMISSION_BIN_LABELS = [
     "<1k tCO₂eq",
     "1k–10k",
@@ -44,67 +26,68 @@ EMISSION_BIN_LABELS = [
     ">1M",
 ]
 
-# Nombre d'éléments à afficher dans les vues "Top".
+# Nombre d'éléments affichés dans les graphiques horizontaux (Top N)
 TOP_N = 15
 
-# Nombre minimum d'organisations pour qu'un secteur soit considéré
-# comme représentatif (sinon = 1 grosse boîte = doublon de la vue Top).
+# Nombre minimal d'organisations pour considérer un secteur NAF comme représentatif
 MIN_ORGS_PER_SECTOR = 3
 
 
-# ─────────────────────────────────────────────────────────────────
-# Dispatcher principal
-# ─────────────────────────────────────────────────────────────────
-
 def create_histogram(df: pd.DataFrame, view: str = VIEW_TOP_ORGS) -> go.Figure:
     """
-    Construit l'histogramme correspondant à la vue demandée.
+    Construit l'histogramme ou graphique en barres correspondant à la vue demandée.
 
     Args:
-        df: DataFrame filtré (issu de filter_data).
-        view: 'top_orgs' | 'bins' | 'sectors' — vue à afficher.
+        df (pd.DataFrame): Données filtrées à analyser.
+        view (str): Type de représentation ('top_orgs', 'bins', 'sectors').
 
     Returns:
-        go.Figure: Figure Plotly prête pour dcc.Graph.
+        go.Figure: Figure Plotly configurée.
     """
+    # Si le DataFrame est vide, on renvoie un graphique vide contenant un message explicatif
     if df.empty:
         return _empty_figure("Aucun bilan ne correspond aux filtres.")
 
+    # Aiguillage vers la fonction de construction adéquate
     if view == VIEW_BINS:
         return _build_bins_view(df)
     if view == VIEW_SECTORS:
         return _build_sectors_view(df)
-    # Par défaut : Top organisations.
+    
     return _build_top_orgs_view(df)
 
 
-# ─────────────────────────────────────────────────────────────────
-# VUE 1 — Top 15 organisations émettrices
-# ─────────────────────────────────────────────────────────────────
-
 def _build_top_orgs_view(df: pd.DataFrame) -> go.Figure:
-    """Top 15 organisations par émissions cumulées sur la sélection."""
-    # Filtre des bilans avec organisation nommée.
+    """
+    Construit la vue du Top 15 des organisations les plus émettrices.
+
+    Args:
+        df (pd.DataFrame): Données à analyser.
+
+    Returns:
+        go.Figure: Graphique en barres horizontales Plotly.
+    """
+    # Exclusion des lignes sans raison sociale renseignée
     valid = df.dropna(subset=["raison_sociale"])
     if valid.empty:
         return _empty_figure("Aucune organisation identifiée.")
 
-    # Agrégation par organisation : somme des émissions sur la sélection.
+    # Somme des émissions cumulées par organisation
     by_org = (
         valid.groupby("raison_sociale", as_index=False)["total_emissions"]
              .sum()
     )
+    # On ne garde que les émetteurs positifs
     by_org = by_org[by_org["total_emissions"] > 0]
     if by_org.empty:
         return _empty_figure("Aucune émission positive sur la sélection.")
 
-    # Sélection des Top N et tri ascendant pour barres horizontales
-    # (la plus grosse organisation apparaît en haut visuellement).
+    # Extraction des 15 plus grandes valeurs, triées par ordre croissant pour l'affichage horizontal
     top = by_org.nlargest(TOP_N, "total_emissions").sort_values(
         "total_emissions", ascending=True
     )
-    # Tronque les noms longs pour rester lisible (raison sociale ADEME
-    # peut atteindre 80+ caractères avec mentions juridiques).
+    
+    # Raccourcissement des raisons sociales trop longues pour ne pas encombrer l'axe Y
     top["label"] = top["raison_sociale"].apply(
         lambda s: (s[:42] + "…") if isinstance(s, str) and len(s) > 45 else s
     )
@@ -113,12 +96,10 @@ def _build_top_orgs_view(df: pd.DataFrame) -> go.Figure:
     fig.add_trace(go.Bar(
         x=top["total_emissions"],
         y=top["label"],
-        orientation="h",
+        orientation="h", # Graphique horizontal
         marker=dict(
-            # Coloration heatmap par intensité : barre la plus longue =
-            # rouge (gros émetteur), barres plus courtes = vert.
             color=top["total_emissions"],
-            colorscale=SEQUENTIAL_HEATMAP,
+            colorscale=SEQUENTIAL_HEATMAP, # Palette de couleurs séquentielle verte-jaune-rouge
             showscale=False,
             line=dict(color=COLORS["surface"], width=1),
         ),
@@ -128,13 +109,13 @@ def _build_top_orgs_view(df: pd.DataFrame) -> go.Figure:
             "%{x:,.0f} tCO₂eq"
             "<extra></extra>"
         ),
-        # Affiche le rang à droite de chaque barre (#1, #2…).
+        # Affichage du classement à droite de chaque barre (#1, #2, etc.)
         text=[f"#{i+1}" for i in range(len(top) - 1, -1, -1)],
         textposition="outside",
         textfont=dict(family="DM Sans", size=11, color=COLORS["text_muted"]),
     ))
 
-    # Hauteur dynamique : 28 px par organisation + marges.
+    # Calcul d'une hauteur proportionnelle au nombre de barres affichées
     chart_height = max(420, 80 + 28 * len(top))
 
     fig.update_layout(
@@ -147,36 +128,39 @@ def _build_top_orgs_view(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-# ─────────────────────────────────────────────────────────────────
-# VUE 2 — Distribution par paliers d'émissions
-# ─────────────────────────────────────────────────────────────────
-
 def _build_bins_view(df: pd.DataFrame) -> go.Figure:
-    """Distribution des bilans par palier d'émissions (5 bins logarithmiques)."""
+    """
+    Construit la vue par paliers d'émissions (distribution logarithmique).
+
+    Args:
+        df (pd.DataFrame): Données à distribuer.
+
+    Returns:
+        go.Figure: Graphique en barres verticales.
+    """
+    # Filtrage des émissions supérieures à zéro
     valid = df[df["total_emissions"] > 0].copy()
     if valid.empty:
         return _empty_figure("Aucune émission positive sur la sélection.")
 
-    # Catégorisation des bilans par palier d'ordre de grandeur.
-    # observed=False : on garde les bins vides dans le résultat pour
-    # avoir un histogramme avec toujours 5 barres (lisibilité visuelle).
+    # Découpage et classification des émissions dans les intervalles définis (paliers)
     valid["bin"] = pd.cut(
         valid["total_emissions"],
         bins=EMISSION_BINS,
         labels=EMISSION_BIN_LABELS,
         include_lowest=True,
     )
+    # Calcul du nombre de bilans et de la somme des émissions par palier
     counts = valid.groupby("bin", observed=False).size()
     sums = valid.groupby("bin", observed=False)["total_emissions"].sum()
 
-    # Couleurs : on utilise la palette HEATMAP discrétisée sur les 5 bins
-    # pour matcher visuellement le code couleur de la carte (vert→rouge).
+    # Sélection de 5 nuances de couleurs associées aux paliers
     bin_colors = [
-        SEQUENTIAL_HEATMAP[0][1],    # vert
-        SEQUENTIAL_HEATMAP[1][1],    # vert clair
-        SEQUENTIAL_HEATMAP[2][1],    # jaune
-        SEQUENTIAL_HEATMAP[4][1],    # orange foncé
-        SEQUENTIAL_HEATMAP[5][1],    # rouge profond
+        SEQUENTIAL_HEATMAP[0][1],    # Vert
+        SEQUENTIAL_HEATMAP[1][1],    # Vert clair
+        SEQUENTIAL_HEATMAP[2][1],    # Jaune
+        SEQUENTIAL_HEATMAP[4][1],    # Orange
+        SEQUENTIAL_HEATMAP[5][1],    # Rouge
     ]
 
     fig = go.Figure()
@@ -187,14 +171,14 @@ def _build_bins_view(df: pd.DataFrame) -> go.Figure:
             color=bin_colors,
             line=dict(color=COLORS["surface"], width=1),
         ),
-        # Texte au-dessus de chaque barre : nb bilans + part en %
+        # Affichage du nombre total de bilans au-dessus de chaque barre
         text=[
             f"<b>{c:,}</b>".replace(",", " ")
             for c in counts.values
         ],
         textposition="outside",
         textfont=dict(family="DM Sans", size=12, color=COLORS["text"]),
-        # Hover : nb bilans + émissions cumulées du palier
+        # Informations détaillées affichées au survol
         customdata=[
             [int(c), float(s) / 1_000_000]
             for c, s in zip(counts.values, sums.values)
@@ -218,26 +202,27 @@ def _build_bins_view(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-# ─────────────────────────────────────────────────────────────────
-# VUE 3 — Top 15 secteurs NAF (avec ≥3 organisations)
-# ─────────────────────────────────────────────────────────────────
-
 def _build_sectors_view(df: pd.DataFrame) -> go.Figure:
-    """Top 15 secteurs NAF par émissions cumulées (≥3 orgs/secteur)."""
+    """
+    Construit la vue du Top 15 des secteurs d'activité (NAF) les plus émetteurs.
+
+    Args:
+        df (pd.DataFrame): Données à analyser.
+
+    Returns:
+        go.Figure: Graphique en barres horizontales.
+    """
     valid = df.dropna(subset=["libelle_naf", "raison_sociale"])
     if valid.empty:
         return _empty_figure("Aucun secteur NAF renseigné.")
 
-    # Calcul par secteur : émissions cumulées + nombre d'organisations.
-    # On vérifie les 2 critères pour qualifier un secteur "représentatif".
+    # Agrégation des émissions et comptage du nombre d'organisations distinctes par secteur
     by_sector = valid.groupby("libelle_naf").agg(
         total_emissions=("total_emissions", "sum"),
         nb_orgs=("raison_sociale", "nunique"),
     ).reset_index()
 
-    # Filtre : on exclut les secteurs avec <3 organisations distinctes.
-    # Sinon le secteur "Extraction de pétrole brut" = 1 boîte = doublon
-    # de la vue Top organisations, sans valeur sectorielle réelle.
+    # Exclusion des secteurs comptant moins de 3 organisations pour éviter les biais statistiques
     by_sector = by_sector[by_sector["nb_orgs"] >= MIN_ORGS_PER_SECTOR]
     by_sector = by_sector[by_sector["total_emissions"] > 0]
 
@@ -247,11 +232,12 @@ def _build_sectors_view(df: pd.DataFrame) -> go.Figure:
             "sur la sélection."
         )
 
-    # Tri + Top N + tri ascendant pour affichage horizontal naturel.
+    # Récupération et tri des 15 plus grands secteurs émetteurs
     top = by_sector.nlargest(TOP_N, "total_emissions").sort_values(
         "total_emissions", ascending=True
     )
-    # Tronque les libellés NAF longs (certains atteignent 100+ caractères).
+    
+    # Raccourcissement des noms longs des secteurs
     top["label"] = top["libelle_naf"].apply(
         lambda s: (s[:48] + "…") if isinstance(s, str) and len(s) > 50 else s
     )
@@ -267,7 +253,6 @@ def _build_sectors_view(df: pd.DataFrame) -> go.Figure:
             showscale=False,
             line=dict(color=COLORS["surface"], width=1),
         ),
-        # customdata : libellé complet + nb d'orgs pour le hover
         customdata=list(zip(top["libelle_naf"], top["nb_orgs"])),
         hovertemplate=(
             "<b>%{customdata[0]}</b><br>"
@@ -275,7 +260,7 @@ def _build_sectors_view(df: pd.DataFrame) -> go.Figure:
             "%{customdata[1]} organisations"
             "<extra></extra>"
         ),
-        # Affichage du nombre d'orgs à droite (donne le contexte sectoriel)
+        # Affichage du nombre d'organisations à droite de chaque barre
         text=[f"{n} orgs" for n in top["nb_orgs"]],
         textposition="outside",
         textfont=dict(family="DM Sans", size=11, color=COLORS["text_muted"]),
@@ -292,12 +277,16 @@ def _build_sectors_view(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-# ─────────────────────────────────────────────────────────────────
-# Helper privé
-# ─────────────────────────────────────────────────────────────────
-
 def _empty_figure(message: str) -> go.Figure:
-    """Figure vide avec message centré (filtres trop restrictifs)."""
+    """
+    Génère un graphique vierge avec une note centrale en cas d'absence de données.
+
+    Args:
+        message (str): Texte explicatif à afficher.
+
+    Returns:
+        go.Figure: Graphique vide Plotly contenant l'annotation.
+    """
     fig = go.Figure()
     fig.add_annotation(
         text=message,

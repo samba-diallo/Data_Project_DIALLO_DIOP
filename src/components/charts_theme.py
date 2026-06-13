@@ -1,90 +1,66 @@
 """
-Thème central pour tous les graphiques Plotly du dashboard.
-Centralise la palette de couleurs, les polices, les marges et les
-options de layout pour garantir une cohérence visuelle entre les
-graphiques et le reste de l'interface (assets/style.css).
-
-Doc Plotly layout : https://plotly.com/python/reference/layout/
+Thème graphique unifié pour l'ensemble des visualisations Plotly de l'application.
+Centralise les choix de couleurs, de typographies et de mises en page pour
+garantir la cohérence visuelle avec le style général CSS du site.
 """
 
-# Type hint pour préciser que apply_theme accepte une figure Plotly
 import plotly.graph_objects as go
 
-
-# ─────────────────────────────────────────────────────────────────
-# PALETTE - en miroir des variables CSS de assets/style.css
-# ─────────────────────────────────────────────────────────────────
-
-# Dictionnaire des couleurs principales : on duplique ici les valeurs
-# définies dans :root de style.css. Plotly travaille en hex inline,
-# il ne peut pas lire les variables CSS — d'où la duplication.
+# ── Dictionnaire des couleurs du projet ──────────────────────────
+# Ces valeurs correspondent à la charte graphique définie dans style.css
 COLORS: dict[str, str] = {
-    "bg":            "#FAFAF7",  # fond principal off-white papier
-    "surface":       "#FFFFFF",  # fond des graphes (carte sur papier)
-    "border":        "#E8E2D5",  # gridlines, axes
-    "text":          "#1A1A1A",  # texte principal
-    "text_muted":    "#6B6B6B",  # legendes, ticks
-    "primary":       "#1F3A2C",  # vert profond (accent principal)
-    "primary_light": "#5C7A4D",  # vert mousse (variation)
-    "accent":        "#C9A961",  # or pâle (highlights ponctuels)
-    "danger":        "#B91C1C",  # alertes
-    "success":       "#16A34A",  # progrès
+    "bg":            "#FAFAF7",  # Fond général (teinte papier crème léger)
+    "surface":       "#FFFFFF",  # Fond blanc des zones de graphiques
+    "border":        "#E8E2D5",  # Couleur pour les lignes d'axes et de grille
+    "text":          "#1A1A1A",  # Couleur des textes principaux (presque noir)
+    "text_muted":    "#6B6B6B",  # Couleur pour les légendes et textes secondaires
+    "primary":       "#1F3A2C",  # Vert foncé officiel (identité visuelle principale)
+    "primary_light": "#5C7A4D",  # Vert moyen complémentaire
+    "accent":        "#C9A961",  # Doré discret utilisé pour la mise en valeur
+    "danger":        "#B91C1C",  # Rouge pour les alertes ou valeurs critiques
+    "success":       "#16A34A",  # Vert pour les progrès ou valeurs positives
 }
 
-
-# Palette catégorielle pour distinguer plusieurs séries (ex: types
-# de structure). Ordre choisi pour rester lisible à 5 catégories
-# maximum, du plus contrasté au plus discret.
+# Liste ordonnée de couleurs catégorielles pour différencier des groupes de données
 CATEGORICAL: list[str] = [
-    "#1F3A2C",  # vert profond — catégorie dominante
-    "#5C7A4D",  # vert mousse
-    "#C9A961",  # or pâle
-    "#A37840",  # caramel
-    "#6B6B6B",  # gris (catégorie résiduelle "Autres")
+    "#1F3A2C",  # Vert foncé principal
+    "#5C7A4D",  # Vert mousse secondaire
+    "#C9A961",  # Doré d'accentuation
+    "#A37840",  # Couleur caramel complémentaire
+    "#6B6B6B",  # Gris neutre de repli (ex: catégorie 'Autres')
 ]
 
-
-# Échelle séquentielle pour les cartes choroplèthes (Phase 4).
-# Du plus clair (faible) au plus foncé (élevé) — convention scientifique.
+# Dégradé séquentiel monochrome vert pour les analyses régulières
 SEQUENTIAL_GREEN: list[str] = [
-    "#FAFAF7",  # quasi blanc (très faible)
-    "#D6DCC9",  # vert pâle
-    "#A6B79B",  # vert moyen clair
-    "#6F8870",  # vert moyen
-    "#3F5648",  # vert foncé
-    "#1F3A2C",  # vert profond (très élevé)
+    "#FAFAF7",  # Valeur la plus faible
+    "#D6DCC9",
+    "#A6B79B",
+    "#6F8870",
+    "#3F5648",
+    "#1F3A2C",  # Valeur la plus élevée
 ]
 
-
-# Échelle ENVIRONNEMENTALE (heatmap) pour la cartographie GES.
-# Inspirée des cartes météo / plateformes climatiques professionnelles :
-# du vert (faible) au rouge (critique) en passant par jaune et orange.
-# Plus parlante intuitivement qu'un dégradé monochrome pour l'utilisateur
-# final - tout le monde lit "vert = bon, rouge = problème" sans légende.
+# Dégradé séquentiel environnemental allant du vert vertueux au rouge critique
+# Utilisé pour colorier les émissions de carbone de façon intuitive (Heatmap)
 SEQUENTIAL_HEATMAP: list[list] = [
-    [0.00, "#1F7A4A"],  # vert profond - faibles émissions
-    [0.20, "#7FB069"],  # vert clair
-    [0.40, "#F2D74E"],  # jaune
-    [0.60, "#F4A261"],  # orange clair
-    [0.80, "#E76F51"],  # orange foncé
-    [1.00, "#A91E2C"],  # rouge profond - émissions critiques
+    [0.00, "#1F7A4A"],  # Vert (émissions très faibles)
+    [0.20, "#7FB069"],
+    [0.40, "#F2D74E"],  # Jaune (transition)
+    [0.60, "#F4A261"],
+    [0.80, "#E76F51"],  # Orange (émissions élevées)
+    [1.00, "#A91E2C"],  # Rouge (émissions critiques)
 ]
 
-
-# Couleurs des trois scopes BEGES (cohérentes sur tout le dashboard).
-# Convention : Scope 1 (directes) = couleur principale du thème,
-# Scope 2 (énergie) = vert mousse intermédiaire, Scope 3 (chaîne de
-# valeur, le plus diffus) = or pâle pour différencier visuellement.
+# Couleurs fixes attribuées à chaque scope réglementaire du bilan GES
+# Scope 1 = Émissions directes (ex: combustion de fioul)
+# Scope 2 = Émissions indirectes liées à l'énergie (ex: électricité)
+# Scope 3 = Autres émissions indirectes (ex: chaîne logistique)
 SCOPE_COLORS: dict[str, str] = {
-    "scope_1": "#1F3A2C",  # vert profond (directes)
-    "scope_2": "#5C7A4D",  # vert mousse (énergie)
-    "scope_3": "#C9A961",  # or pâle (indirectes)
+    "scope_1": "#1F3A2C",  # Vert foncé
+    "scope_2": "#5C7A4D",  # Vert moyen
+    "scope_3": "#C9A961",  # Doré
 }
 
-
-# ─────────────────────────────────────────────────────────────────
-# APPLICATION DU THEME
-# ─────────────────────────────────────────────────────────────────
 
 def apply_theme(
     fig: go.Figure,
@@ -92,55 +68,45 @@ def apply_theme(
     show_legend: bool = True,
 ) -> go.Figure:
     """
-    Applique le thème GES Insight à une figure Plotly.
+    Applique la charte graphique GES Insight sur un objet Figure Plotly.
 
     Args:
-        fig (go.Figure): Figure Plotly à thématiser.
-        height (int): Hauteur du graphique en pixels (par défaut 380px).
-        show_legend (bool): Affiche ou non la légende.
+        fig (go.Figure): Figure Plotly à styliser.
+        height (int): Hauteur du graphique en pixels.
+        show_legend (bool): Indique s'il faut afficher la légende.
 
     Returns:
-        go.Figure: La même figure, modifiée en place et retournée pour
-                   permettre le chaînage (fluent interface).
+        go.Figure: La figure mise en conformité visuelle.
     """
-    # update_layout permet de modifier toutes les options du layout en
-    # un seul appel. Plus pratique que d'enchaîner fig.update_xaxes(),
-    # fig.update_yaxes(), etc.
+    # Mise à jour globale du layout (agencement général) de la figure
     fig.update_layout(
-        # Fond de la zone graphique : blanc pur (carte sur papier)
+        # Remplissage des couleurs de fond de la zone de graphique
         paper_bgcolor=COLORS["surface"],
         plot_bgcolor=COLORS["surface"],
 
-        # Police globale : DM Sans, fallback system-ui si DM Sans absent
-        # (police de secours du navigateur, jamais 100% identique mais
-        # garantit que rien n'est cassé si Google Fonts ne charge pas).
+        # Choix de la typographie globale
         font=dict(
             family="DM Sans, system-ui, -apple-system, sans-serif",
             color=COLORS["text"],
             size=13,
         ),
 
-        # Titre du graphique : Fraunces serif, plus large
+        # Paramétrage de la typographie des titres
         title=dict(
             font=dict(
                 family="Fraunces, Georgia, serif",
                 size=20,
                 color=COLORS["text"],
             ),
-            # x=0.02 : aligné à gauche (pas centré, plus éditorial)
-            x=0.02,
-            # y plus bas pour rapprocher le titre du graphique
+            x=0.02, # Légèrement décalé à gauche pour un effet asymétrique
             y=0.95,
         ),
 
-        # Marges : t=60 pour le titre, b=40 pour les labels d'axe X,
-        # l=60 pour les labels d'axe Y (chiffres parfois larges),
-        # r=20 simple respiration à droite.
+        # Marges de sécurité autour de la figure
         margin=dict(t=60, b=40, l=60, r=20),
-
         height=height,
 
-        # Tooltip au survol : encadré blanc avec bordure subtile
+        # Personnalisation visuelle de l'infobulle au survol (Tooltip)
         hoverlabel=dict(
             bgcolor=COLORS["surface"],
             bordercolor=COLORS["border"],
@@ -151,9 +117,7 @@ def apply_theme(
             ),
         ),
 
-        # Légende horizontale en haut (mobile-friendly).
-        # showlegend conditionnel : permet aux donuts de garder leur
-        # propre légende intégrée si besoin.
+        # Positionnement horizontal de la légende au-dessus du graphique
         showlegend=show_legend,
         legend=dict(
             orientation="h",
@@ -162,25 +126,23 @@ def apply_theme(
             xanchor="left",
             x=0,
             font=dict(size=12, color=COLORS["text_muted"]),
-            # Pas de bordure ni fond pour la légende — épure
-            bgcolor="rgba(0,0,0,0)",
+            bgcolor="rgba(0,0,0,0)", # Fond transparent
         ),
     )
 
-    # Configuration des axes : pas de grille verticale (gêne la lecture),
-    # grille horizontale très subtile (aide à lire les valeurs).
+    # Paramétrage de l'axe des abscisses (X)
     fig.update_xaxes(
-        showgrid=False,
-        linecolor=COLORS["border"],
+        showgrid=False,                 # Masquage de la grille verticale pour alléger la lecture
+        linecolor=COLORS["border"],     # Ligne d'axe fine de séparation
         tickfont=dict(color=COLORS["text_muted"]),
         title_font=dict(color=COLORS["text"], size=13),
-        # zeroline=False : pas de ligne épaisse à zéro (souvent superflue)
         zeroline=False,
     )
+
+    # Paramétrage de l'axe des ordonnées (Y)
     fig.update_yaxes(
-        showgrid=True,
-        gridcolor=COLORS["border"],
-        # gridwidth=1 (default) avec une couleur très claire est suffisant
+        showgrid=True,                  # Affichage d'une grille horizontale pour lire les niveaux
+        gridcolor=COLORS["border"],     # Couleur discrète pour les lignes de grille
         linecolor=COLORS["border"],
         tickfont=dict(color=COLORS["text_muted"]),
         title_font=dict(color=COLORS["text"], size=13),

@@ -1,54 +1,44 @@
 """
-Composant en-tete editorial des pages du dashboard.
-Affiche un kicker (label en majuscules), un titre serif et un sous-titre.
-Inspire des couvertures de revues (Le Monde Diplo, Bloomberg Green).
-
-Doc Dash HTML : https://dash.plotly.com/dash-html-components
+Composant d'en-tête éditorial pour les pages du dashboard.
+Affiche une catégorie (kicker), un titre principal et un descriptif sous-titré.
+S'inspire de la mise en page des articles de presse.
 """
 
 from dash import html
 
 
-# ─────────────────────────────────────────────────────────────────
-# FRONTEND – Composant
-# ─────────────────────────────────────────────────────────────────
-
 def create_header(
     title: str,
     subtitle: str = "",
     kicker: str = "",
-) -> html.Div:
+) -> html.Header:
     """
-    Construit un en-tete editorial pour une page du dashboard.
+    Construit un en-tête graphique pour structurer une page du tableau de bord.
 
     Args:
-        title (str): Titre principal de la page (en serif Fraunces).
-        subtitle (str): Phrase d'accroche sous le titre (optionnel).
-        kicker (str): Petit label en majuscules au-dessus du titre,
-                      facon presse (optionnel). Ex: "Vue d'ensemble".
+        title (str): Titre principal de la page.
+        subtitle (str): Texte d'explication ou sous-titre de la page (optionnel).
+        kicker (str): Petit label textuel placé au-dessus du titre principal (optionnel).
 
     Returns:
-        html.Div: Composant Dash html.Div pret a etre integre dans un layout.
+        html.Header: Le composant d'en-tête HTML5 prêt à être inséré dans le layout.
     """
-    # On construit progressivement la liste d'enfants : kicker affiche
-    # uniquement s'il est fourni, idem pour le sous-titre. Cela evite des
-    # divs vides qui produiraient des espaces blancs inutiles.
+    # Création d'une liste vide pour stocker les composants HTML à la suite
     children: list = []
 
-    # Kicker optionnel : petit texte en majuscules au-dessus du titre.
-    # Sert a indiquer la "rubrique" (Vue d'ensemble, Explorer, etc.).
+    # Si un label de sur-titre (kicker) est fourni, on l'ajoute en premier
     if kicker:
         children.append(html.Div(kicker, className="kicker"))
 
-    # Titre principal en h1 : un seul h1 par page pour le SEO et l'accessibilite.
+    # Ajout du titre principal de la page sous la forme d'une balise H1
+    # Important : il ne doit y avoir qu'un seul H1 par page pour un bon référencement SEO
     children.append(html.H1(title))
 
-    # Sous-titre optionnel : explication courte du contenu de la page.
+    # Si un sous-titre explicatif est fourni, on l'ajoute en dernier sous forme de paragraphe
     if subtitle:
         children.append(html.P(subtitle, className="subtitle"))
 
-    # html.Header : balise semantique HTML5 pour les en-tetes (mieux que div
-    # pour les lecteurs d'ecran).
+    # Renvoi du composant global structuré sous la balise sémantique <header>
     return html.Header(
         className="page-header",
         children=children,

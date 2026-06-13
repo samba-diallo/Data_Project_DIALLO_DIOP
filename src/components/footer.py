@@ -1,55 +1,41 @@
 """
-Composant pied de page du dashboard.
-Affiche les sources de donnees, l'equipe, et la mention de copyright
-exigee par le cahier des charges.
-
-Doc Dash HTML : https://dash.plotly.com/dash-html-components
+Composant pied de page (Footer) pour l'application.
+Affiche les sources de données, les contributeurs, et les mentions légales obligatoires.
 """
 
 from dash import html
-
-# DashIconify : icones SVG, utilise ici pour le logo source de donnees
 from dash_iconify import DashIconify
 
-
-# ─────────────────────────────────────────────────────────────────
-# FRONTEND – Composant
-# ─────────────────────────────────────────────────────────────────
-
-# URL officielle de la source de donnees (a citer dans le footer
-# selon les exigences du prof, section "Data" du README).
+# URL officielle du jeu de données hébergé par l'ADEME
 ADEME_URL = "https://data.ademe.fr/datasets/bilan-ges"
 
 
 def create_footer() -> html.Footer:
     """
-    Construit et retourne le pied de page du dashboard.
-    Contient trois colonnes (a propos, source de donnees, equipe)
-    et une ligne meta avec copyright et mention BEGES.
+    Construit et retourne le pied de page général du dashboard.
+    Il est structuré en trois colonnes descriptives et une ligne finale de copyright.
 
     Returns:
-        html.Footer: Composant Dash pret a etre integre dans un layout.
+        html.Footer: Le composant de pied de page HTML5 configuré.
     """
-    # html.Footer : balise semantique HTML5, equivalent de <footer>.
+    # Utilisation de la balise sémantique <footer> pour l'accessibilité
     return html.Footer(
         className="footer-ges",
         children=[
-            # Container largeur max pour aligner avec le contenu de la page
+            # Conteneur alignant le footer sur la largeur maximale de la page
             html.Div(
                 className="page-container",
                 children=[
-                    # Bloc principal : 3 colonnes informatives
+                    # Ligne principale divisée en plusieurs colonnes à l'aide de Bootstrap (row)
                     html.Div(
-                        # className Bootstrap : grille 3 colonnes responsive,
-                        # gap entre colonnes pour respirer
                         className="row g-4",
                         children=[
-                            _build_about_column(),
-                            _build_data_column(),
-                            _build_team_column(),
+                            _build_about_column(), # Colonne d'explication du projet
+                            _build_data_column(),  # Colonne de référence aux données
+                            _build_team_column(),  # Colonne de présentation de l'équipe
                         ],
                     ),
-                    # Ligne meta en bas : copyright et tech stack
+                    # Ligne horizontale séparatrice de bas de page (méta-informations)
                     _build_meta_line(),
                 ],
             ),
@@ -57,17 +43,19 @@ def create_footer() -> html.Footer:
     )
 
 
-# ─────────────────────────────────────────────────────────────────
-# Helpers prives - construction des colonnes
-# ─────────────────────────────────────────────────────────────────
-
 def _build_about_column() -> html.Div:
-    """Colonne 'A propos' : pitch produit court."""
+    """
+    Construit la première colonne contenant la description abrégée du projet.
+
+    Returns:
+        html.Div: Bloc HTML de la colonne.
+    """
     return html.Div(
         className="col-md-4",
         children=[
+            # Titre de la colonne
             html.Div("À propos", className="footer-section-title"),
-            # Phrase de presentation courte du produit (mission)
+            # Description succincte
             html.P(
                 "Plateforme de visualisation des Bilans GES réglementaires "
                 "publiés par les organisations françaises sur la plateforme "
@@ -78,31 +66,36 @@ def _build_about_column() -> html.Div:
 
 
 def _build_data_column() -> html.Div:
-    """Colonne 'Source des donnees' : credit ADEME."""
+    """
+    Construit la deuxième colonne contenant le lien vers les données sources de l'ADEME.
+
+    Returns:
+        html.Div: Bloc HTML de la colonne.
+    """
     return html.Div(
         className="col-md-4",
         children=[
+            # Titre de la colonne
             html.Div("Source des données", className="footer-section-title"),
             html.P([
                 "Données publiques ADEME — ",
-                # Lien externe (target=_blank ouvre dans un nouvel onglet
-                # pour ne pas perdre la consultation du dashboard).
-                # rel="noopener" est une mesure de securite contre le
-                # tab-napping (recommandation OWASP).
+                # Lien hypertexte pointant vers les données brutes
+                # target="_blank" permet d'ouvrir le lien dans un nouvel onglet
+                # rel="noopener noreferrer" est une sécurité pour éviter les vulnérabilités de redirection
                 html.A(
                     "Bilans GES",
                     href=ADEME_URL,
                     target="_blank",
                     rel="noopener noreferrer",
                 ),
-                # Icone "lien externe" pour signaler que ca ouvre ailleurs
+                # Petit icône indiquant un lien externe vers le site de l'ADEME
                 DashIconify(
                     icon="tabler:external-link",
                     width=14,
                     style={"marginLeft": "4px", "verticalAlign": "middle"},
                 ),
             ]),
-            # Mention sur la frequence de mise a jour (transparence)
+            # Explication sur l'utilisation hors ligne des données stockées en local
             html.P(
                 "Mises à jour quotidiennes par l'ADEME ; un instantané est "
                 "embarqué dans ce projet pour permettre un fonctionnement "
@@ -114,13 +107,18 @@ def _build_data_column() -> html.Div:
 
 
 def _build_team_column() -> html.Div:
-    """Colonne 'Equipe' : auteurs du projet."""
+    """
+    Construit la troisième colonne présentant les auteurs du projet.
+
+    Returns:
+        html.Div: Bloc HTML de la colonne.
+    """
     return html.Div(
         className="col-md-4",
         children=[
+            # Titre de la colonne
             html.Div("Équipe", className="footer-section-title"),
             html.P([
-                # Liste des co-auteurs du projet ESIEE
                 "Projet réalisé par ",
                 html.Strong("Samba DIALLO"),
                 " et ",
@@ -132,15 +130,18 @@ def _build_team_column() -> html.Div:
 
 
 def _build_meta_line() -> html.Div:
-    """Ligne fine en bas du footer : copyright + stack technique."""
+    """
+    Construit la ligne de copyright tout en bas du pied de page.
+
+    Returns:
+        html.Div: Ligne finale contenant les crédits textuels.
+    """
     return html.Div(
         className="footer-meta d-flex justify-content-between flex-wrap",
         children=[
-            # Mention de copyright. 2026 = annee universitaire en cours
-            # (date saisie en dur plutot que dynamique pour eviter une
-            # dependance datetime au runtime).
+            # Texte de copyright et école d'ingénieurs
             html.Span("© 2026 GES Insight — ESIEE Paris"),
-            # Tech stack visible : transparence sur les outils utilises
+            # Technologies clés utilisées
             html.Span("Dash · Plotly · Pandas"),
         ],
     )

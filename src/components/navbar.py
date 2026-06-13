@@ -1,27 +1,14 @@
 """
-Barre de navigation multi-pages du dashboard.
-Utilise dcc.Link pour la navigation sans rechargement de page.
-
-Doc Dash multi-pages : https://dash.plotly.com/urls
+Composant de barre de navigation (Navbar) pour le tableau de bord.
+Permet de basculer d'une page à l'autre de manière fluide, sans rechargement complet de la page (technologie Single Page Application).
 """
 
-# dash.html : composants HTML wrappes en Python (html.Nav, html.Div...)
-# dash.dcc : composants Dash core, dont dcc.Link pour la navigation interne
 from dash import html, dcc
-
-# DashIconify : injection d'icones SVG depuis Iconify (Heroicons, Lucide,
-# Tabler...). Conforme a la regle "no-emoji-icons" de la checklist UX.
 from dash_iconify import DashIconify
 
-
-# ─────────────────────────────────────────────────────────────────
-# FRONTEND – Composant
-# ─────────────────────────────────────────────────────────────────
-
-# Liste des liens de navigation, definie comme constante au niveau module
-# pour faciliter l'ajout/retrait de pages a un seul endroit.
-# Tuple : (label affiche, chemin url, icone Iconify).
-# Iconify : on utilise la collection "tabler" pour un look ligne fin uniforme.
+# Configuration des liens de navigation sous forme de liste.
+# Chaque élément contient : (Libellé affiché, chemin URL, nom de l'icône).
+# Cela permet d'ajouter une nouvelle page très facilement.
 NAV_LINKS: list[tuple[str, str, str]] = [
     ("Vue d'ensemble", "/",             "tabler:layout-dashboard"),
     ("Explorer",       "/explorer",     "tabler:chart-histogram"),
@@ -31,34 +18,28 @@ NAV_LINKS: list[tuple[str, str, str]] = [
 
 def create_navbar() -> html.Nav:
     """
-    Construit et retourne la barre de navigation du dashboard.
-    Contient une marque (logo textuel) a gauche et les liens vers
-    les pages principales a droite.
+    Construit et retourne la barre de navigation supérieure.
+    Comprend le logo/titre à gauche et les liens de navigation à droite.
 
     Returns:
-        html.Nav: Composant Dash de navigation pret a etre integre.
+        html.Nav: Le composant de navigation HTML5 prêt pour le gabarit global.
     """
-    # On construit la liste des liens via une comprehension de liste plutot
-    # qu'a la main : si on ajoute une page dans NAV_LINKS, le rendu suit.
+    # Génération automatique des liens HTML à partir de la configuration NAV_LINKS
     nav_items = [_build_nav_link(label, href, icon)
                  for label, href, icon in NAV_LINKS]
 
-    # html.Nav : balise semantique HTML5 pour la navigation. Important pour
-    # l'accessibilite (lecteurs d'ecran annoncent "navigation").
-    # className : classes CSS appliquees, definies dans assets/style.css.
+    # Utilisation de la balise sémantique <nav> pour les critères d'accessibilité numérique
     return html.Nav(
         className="navbar-ges",
-        # role="navigation" est implicite avec html.Nav, mais on le rend
-        # explicite pour les lecteurs d'ecran plus anciens.
+        # Renseigner le rôle d'accessibilité pour les lecteurs d'écran d'utilisateurs non-voyants
         **{"role": "navigation", "aria-label": "Navigation principale"},
         children=[
             html.Div(
                 className="d-flex justify-content-between align-items-center",
                 children=[
-                    # Brand a gauche : nom du produit avec icone, retour accueil au clic
+                    # Logo et titre à gauche (qui renvoie vers la page d'accueil au clic)
                     _build_brand(),
-                    # Liens de navigation a droite, regroupes dans un container
-                    # avec gap pour respirer entre chaque lien
+                    # Conteneur des boutons de liens de pages alignés à droite
                     html.Div(
                         className="d-flex align-items-center gap-2",
                         children=nav_items,
@@ -69,38 +50,44 @@ def create_navbar() -> html.Nav:
     )
 
 
-# ─────────────────────────────────────────────────────────────────
-# Helpers prives
-# ─────────────────────────────────────────────────────────────────
-
 def _build_brand() -> dcc.Link:
-    """Construit le bloc 'marque' (logo + nom) qui ramene a l'accueil."""
-    # dcc.Link : navigation cote client, sans rechargement de page complet.
-    # href="/" pointe vers la page d'accueil.
+    """
+    Génère le bouton logo/titre de l'application (Brand) placé à gauche.
+
+    Returns:
+        dcc.Link: Lien interactif Dash sans rechargement.
+    """
     return dcc.Link(
         href="/",
         className="brand d-flex align-items-center gap-2",
         children=[
-            # Icone : feuille stylisee qui evoque l'environnement sans cliche
-            # (on evite l'emoji feuille verte). Tabler icon "leaf-2".
+            # Icône SVG représentant une feuille pour évoquer l'écologie (aucune image png ou emoji)
             DashIconify(icon="tabler:leaf-2", width=24, color="#1F3A2C"),
-            # Nom du produit : 2 mots avec hierarchie typographique implicite
+            # Nom de l'application
             html.Span("GES Insight"),
         ],
     )
 
 
 def _build_nav_link(label: str, href: str, icon: str) -> dcc.Link:
-    """Construit un lien de navigation individuel avec icone + label."""
+    """
+    Génère un lien de navigation individuel pour le menu.
+
+    Args:
+        label (str): Texte à afficher.
+        href (str): Chemin d'URL de destination.
+        icon (str): Identifiant de l'icône à afficher à côté du texte.
+
+    Returns:
+        dcc.Link: Lien interactif Dash.
+    """
     return dcc.Link(
         href=href,
-        # className "nav-link" : style defini dans style.css
         className="nav-link d-flex align-items-center gap-2",
         children=[
-            # Icone discrete a gauche du label : 16px = bonne taille pour
-            # un element de navigation (pas trop voyante)
+            # Icône associée au lien
             DashIconify(icon=icon, width=16),
-            # Label texte
+            # Libellé du lien
             html.Span(label),
         ],
     )
