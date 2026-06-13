@@ -1,46 +1,19 @@
 """
-Page 'Méthodologie' du dashboard.
-Documente le référentiel BEGES (Scope 1/2/3 et postes P1.x à P6.x), le
-pipeline de traitement des données ADEME (get_data -> clean_data -> dashboard)
-et la déclaration d'originalité du code (copyright exigé par le cahier
-des charges du projet — D. Courivaud, ESIEE).
-
-Page purement documentaire : pas de callback, pas de filtre, pas de
-chargement de données dynamique. Tout le contenu est statique et reflète
-la logique réelle du code (cf. src/utils/clean_data.py).
-
-Doc Dash layout : https://dash.plotly.com/layout
+Page 'Méthodologie' de l'application.
+Présente les définitions réglementaires des scopes BEGES (Scope 1, 2, 3 et leurs postes associés),
+les étapes de traitement de données (pipeline) et la déclaration des dépendances tierces utilisées.
+Cette page est purement informative et documentaire (pas de callback interactif).
 """
 
-# Permet la syntaxe PEP 604 (list | None) sur Python 3.9 si jamais on en
-# ajoute plus tard. Pas indispensable aujourd'hui mais cohérent avec les
-# autres modules du projet.
 from __future__ import annotations
-
 from dash import html
-
-# DashIconify : icônes SVG (Tabler / Lucide) pour décorer les sections
-# sans utiliser d'emoji (cf. checklist UI/UX du projet).
 from dash_iconify import DashIconify
 
-# Header éditorial commun à toutes les pages (kicker + h1 serif + sous-titre).
+# Importation des composants et styles partagés
 from src.components.header import create_header
-
-# Couleurs des scopes BEGES : on les réutilise ici pour que les cartes de
-# glossaire aient la même sémantique colorée que les graphes (donut scope,
-# tooltip de la carte, etc.).
 from src.components.charts_theme import SCOPE_COLORS
 
-
-# ─────────────────────────────────────────────────────────────────
-# DONNÉES DOCUMENTAIRES (statiques)
-# ─────────────────────────────────────────────────────────────────
-
-# Glossaire des 3 scopes BEGES. La source officielle est le référentiel
-# ADEME "Méthode pour la réalisation des bilans d'émissions de gaz à effet
-# de serre" (article L. 229-25 du code de l'environnement). Les libellés
-# repris ici suivent la version V5 utilisée par notre dataset (colonne
-# `methode_beges` dans cleaneddata.csv).
+# ── Glossaire statique du référentiel BEGES ──────────────────
 SCOPES_BEGES: list[dict] = [
     {
         "id": "scope_1",
@@ -109,10 +82,7 @@ SCOPES_BEGES: list[dict] = [
     },
 ]
 
-
-# Étapes du pipeline de traitement des données. Cet ordre reflète
-# fidèlement le contenu de src/utils/get_data.py et src/utils/clean_data.py
-# (cf. la fonction `main()` qui orchestre les 4 étapes).
+# Etapes du pipeline de données (get_data -> clean_data -> cleaneddata.csv)
 PIPELINE_STEPS: list[dict] = [
     {
         "n": "01",
@@ -172,11 +142,7 @@ PIPELINE_STEPS: list[dict] = [
     },
 ]
 
-
-# Inventaire des dépendances tierces utilisées dans le projet, avec leur
-# rôle exact. C'est le cœur de la « déclaration d'originalité » exigée par
-# le cahier des charges : tout code emprunté doit être listé explicitement
-# pour ne pas tomber sous la qualification de plagiat.
+# Déclarations des dépendances externes utilisées dans le code (exigence académique de non-plagiat)
 CODE_DEPENDENCIES: list[tuple[str, str]] = [
     ("Dash 2.x", "Framework du dashboard (routing, callbacks, dcc, html)"),
     ("dash-bootstrap-components", "Grille responsive et thème Bootstrap"),
@@ -189,25 +155,16 @@ CODE_DEPENDENCIES: list[tuple[str, str]] = [
 ]
 
 
-# ─────────────────────────────────────────────────────────────────
-# FRONTEND – Helpers de rendu
-# ─────────────────────────────────────────────────────────────────
-
 def _scope_card(scope: dict) -> html.Div:
     """
-    Construit une carte de glossaire pour un scope BEGES.
-    Affiche la pastille de couleur sémantique du scope, le libellé court,
-    le titre, le résumé et la liste de ses postes (code + intitulé).
+    Construit la carte glossaire décrivant un Scope BEGES.
 
     Args:
-        scope (dict): Entrée du dict SCOPES_BEGES (id, label, title, color,
-            summary, posts).
+        scope (dict): Données du scope (titre, description, sous-postes).
 
     Returns:
-        html.Div: Carte prête à être insérée dans la grille de glossaire.
+        html.Div: Composant Dash représentant la fiche du scope.
     """
-    # Liste des postes : on rend chaque entrée comme un <li> avec le code
-    # en monospace (JetBrains Mono via .tabular-nums) puis l'intitulé.
     post_items = [
         html.Li(
             [
@@ -221,11 +178,8 @@ def _scope_card(scope: dict) -> html.Div:
 
     return html.Div(
         className="scope-card",
-        # Bordure gauche colorée = signature visuelle du scope, lecture
-        # immédiate de la sémantique (vert profond, vert mousse, or pâle).
-        style={"borderLeftColor": scope["color"]},
+        style={"borderLeftColor": scope["color"]}, # Bordure gauche avec la couleur thématique du scope
         children=[
-            # En-tête de carte : icône + label "Scope X" en majuscules.
             html.Div(
                 className="scope-card-header",
                 children=[
@@ -237,11 +191,8 @@ def _scope_card(scope: dict) -> html.Div:
                     html.Span(scope["label"], className="scope-card-label"),
                 ],
             ),
-            # Titre principal (« Émissions directes », etc.).
             html.H3(scope["title"], className="scope-card-title"),
-            # Définition courte du scope.
             html.P(scope["summary"], className="scope-card-summary"),
-            # Liste des postes BEGES couverts par ce scope.
             html.Ul(post_items, className="scope-card-posts"),
         ],
     )
@@ -249,20 +200,17 @@ def _scope_card(scope: dict) -> html.Div:
 
 def _pipeline_step(step: dict) -> html.Div:
     """
-    Construit une étape du pipeline de traitement des données.
-    Numéro éditorial en exergue, icône, titre, référence au module Python
-    et description du rôle de l'étape.
+    Génère une carte de description pour une étape du pipeline de traitement des données.
 
     Args:
-        step (dict): Entrée de PIPELINE_STEPS.
+        step (dict): Données décrivant l'étape (titre, module concerné, description).
 
     Returns:
-        html.Div: Carte « étape » du pipeline.
+        html.Div: Composant HTML de l'étape.
     """
     return html.Div(
         className="pipeline-step",
         children=[
-            # Bandeau d'en-tête : numéro éditorial + icône.
             html.Div(
                 className="pipeline-step-head",
                 children=[
@@ -275,8 +223,6 @@ def _pipeline_step(step: dict) -> html.Div:
                 ],
             ),
             html.H3(step["title"], className="pipeline-step-title"),
-            # Référence au module Python exact qui implémente cette étape
-            # (utile pour le correcteur qui veut vérifier l'implémentation).
             html.Code(step["module"], className="pipeline-step-module"),
             html.P(step["desc"], className="pipeline-step-desc"),
         ],
@@ -284,7 +230,16 @@ def _pipeline_step(step: dict) -> html.Div:
 
 
 def _dependency_row(name: str, role: str) -> html.Tr:
-    """Construit une ligne de tableau pour une dépendance déclarée."""
+    """
+    Génère une ligne de tableau décrivant une bibliothèque tierce.
+
+    Args:
+        name (str): Nom de la dépendance.
+        role (str): Rôle dans le projet.
+
+    Returns:
+        html.Tr: Ligne de tableau.
+    """
     return html.Tr(
         [
             html.Td(html.Code(name, className="dep-name")),
@@ -293,27 +248,16 @@ def _dependency_row(name: str, role: str) -> html.Tr:
     )
 
 
-# ─────────────────────────────────────────────────────────────────
-# FRONTEND – Page
-# ─────────────────────────────────────────────────────────────────
-
 def layout() -> html.Div:
     """
-    Construit et retourne le layout de la page « Méthodologie ».
-    Sections :
-      1. Comment lire ce tableau de bord (guide de navigation).
-      2. Glossaire du référentiel BEGES (Scope 1/2/3 + 22 postes).
-      3. Pipeline de traitement des données ADEME (5 étapes).
-      4. Déclaration d'originalité du code (auteurs + dépendances tierces).
+    Définit le layout complet de la page Méthodologie.
 
     Returns:
-        html.Div: Layout complet de la page méthodologie.
+        html.Div: Conteneur de la page méthodologique.
     """
     return html.Div(
         className="page-container",
         children=[
-            # Header éditorial : entrée dans la partie documentation /
-            # transparence du produit.
             create_header(
                 kicker="Méthodologie",
                 title="Comment lire ce tableau de bord",
@@ -323,10 +267,7 @@ def layout() -> html.Div:
                 ),
             ),
 
-            # ── Section 1 : guide de lecture des 3 pages ───────────
-            # Mini repère pour orienter le correcteur (ou tout nouvel
-            # utilisateur) vers les 3 pages réellement accessibles via
-            # la navbar (Accueil, Explorer, Méthodologie).
+            # Section 1 : Guide rapide de structure des pages
             html.Section(
                 className="content-section",
                 children=[
@@ -383,7 +324,7 @@ def layout() -> html.Div:
                 ],
             ),
 
-            # ── Section 2 : Glossaire BEGES ───────────────────────
+            # Section 2 : Glossaire interactif BEGES
             html.Section(
                 className="content-section",
                 children=[
@@ -404,7 +345,7 @@ def layout() -> html.Div:
                 ],
             ),
 
-            # ── Section 3 : Pipeline de traitement ────────────────
+            # Section 3 : Pipeline de nettoyage et d'ingestion
             html.Section(
                 className="content-section",
                 children=[
@@ -420,9 +361,6 @@ def layout() -> html.Div:
                         className="pipeline-grid",
                         children=[_pipeline_step(s) for s in PIPELINE_STEPS],
                     ),
-                    # Petit pied de section : pointe vers la source et le
-                    # chemin local du fichier (utile au correcteur pour
-                    # vérifier la reproductibilité).
                     html.Div(
                         className="pipeline-source",
                         children=[
@@ -442,7 +380,7 @@ def layout() -> html.Div:
                 ],
             ),
 
-            # ── Section 4 : Déclaration d'originalité ─────────────
+            # Section 4 : Déclaration académique d'originalité du code
             html.Section(
                 className="content-section",
                 children=[
@@ -454,8 +392,6 @@ def layout() -> html.Div:
                         "explicitement, sous peine d'être qualifié de plagiat.",
                         className="section-subtitle",
                     ),
-
-                    # Tableau des dépendances tierces déclarées.
                     html.H3(
                         "Bibliothèques et ressources empruntées",
                         className="originality-subtitle",
@@ -488,13 +424,6 @@ def layout() -> html.Div:
 def register_callbacks(app) -> None:
     """
     Enregistre les callbacks spécifiques à la page Méthodologie.
-    Vide : page purement documentaire, pas d'interactivité prévue.
-
-    Args:
-        app: Instance de l'application Dash (dash.Dash).
-
-    Returns:
-        None
+    (Aucun callback requis pour cette page documentaire statique).
     """
-    # Aucune interaction prévue sur cette page.
     pass

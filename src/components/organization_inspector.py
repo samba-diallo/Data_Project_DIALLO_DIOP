@@ -1,23 +1,9 @@
 """
-Composant Inspecteur d'organisation.
-
-Le dataset comporte 6 810 organisations distinctes, ce qui rend
-impossible une visualisation exhaustive. Cet inspecteur permet de
-chercher une organisation par nom et d'afficher en détail :
-
-  - 4 KPIs contextuels (total, secteur, région, années déclarées)
-  - une mini courbe d'évolution annuelle (si ≥2 années dispo)
-  - un mini donut Scope 1/2/3
-
-Usage : à brancher dans la page Explorer avec deux callbacks :
-  1. options du dropdown = liste des orgs présentes dans la sélection
-  2. contenu du détail = construit à partir de l'org sélectionnée
-
-Doc Dash dropdown : https://dash.plotly.com/dash-core-components/dropdown
+Composant d'inspection détaillée d'une organisation (raison sociale).
+Permet de rechercher une entreprise ou entité publique pour afficher sa fiche analytique :
+KPIs dédiés, courbe d'évolution temporelle et graphique en secteurs (donut) par scope.
 """
 
-# Permet la syntaxe PEP 604 (str | None) sur Python 3.9 :
-# les annotations restent des chaînes et ne sont pas évaluées à l'import.
 from __future__ import annotations
 
 import pandas as pd
@@ -25,44 +11,35 @@ import plotly.graph_objects as go
 from dash import html, dcc
 from dash_iconify import DashIconify
 
+# Importation du thème graphique partagé
 from src.components.charts_theme import apply_theme, COLORS, SCOPE_COLORS
 
-
-# ─────────────────────────────────────────────────────────────────
-# IDs Dash exposés (référencés par les callbacks dans analysis.py)
-# ─────────────────────────────────────────────────────────────────
-
+# Identifiants uniques pour lier le dropdown et la zone de détail aux callbacks Dash
 INSPECTOR_DROPDOWN_ID = "inspector-org-dropdown"
 INSPECTOR_DETAIL_ID = "inspector-org-detail"
 
 
-# ─────────────────────────────────────────────────────────────────
-# FRONTEND – Composant principal
-# ─────────────────────────────────────────────────────────────────
-
 def create_inspector(df: pd.DataFrame) -> html.Div:
     """
-    Construit le squelette du panneau Inspecteur d'organisation.
+    Construit l'ossature initiale du panneau d'inspection.
 
     Args:
-        df: DataFrame complet (toutes orgs disponibles) - sert à
-            initialiser les options du dropdown.
+        df (pd.DataFrame): Jeu de données complet pour initialiser la barre de recherche.
 
     Returns:
-        html.Div: Conteneur Dash du panneau.
+        html.Div: Conteneur du panneau de recherche et de la zone de résultats.
     """
-    # Liste des organisations disponibles (raison sociale + SIREN pour
-    # désambiguïser les homonymes). Tri alphabétique pour faciliter la
-    # recherche manuelle.
+    # Construction de la liste des options du menu déroulant (dropdown)
     options = _build_org_options(df)
 
     return html.Div(
         className="inspector-panel",
         children=[
-            # Barre de recherche
+            # Zone supérieure contenant la barre de recherche
             html.Div(
                 className="inspector-search-bar",
                 children=[
+                    # Label d'information et statistiques de la base
                     html.Div(
                         className="inspector-search-label",
                         children=[
@@ -82,20 +59,20 @@ def create_inspector(df: pd.DataFrame) -> html.Div:
                             ),
                         ],
                     ),
+                    # Menu déroulant Dash avec autocomplétion pour la recherche d'organisations
                     dcc.Dropdown(
                         id=INSPECTOR_DROPDOWN_ID,
                         options=options,
                         placeholder="Tapez le nom (ex: Renault, EDF, BNP, ENGIE…)",
                         value=None,
                         clearable=True,
-                        # searchable par défaut. optionHeight=42 pour aérer.
-                        optionHeight=42,
+                        optionHeight=42, # Hauteur aérée pour chaque ligne d'option
                         className="inspector-dropdown",
                     ),
                 ],
             ),
 
-            # Zone de détail (vide par défaut, remplie par callback)
+            # Zone inférieure contenant la fiche détaillée (vide lors de l'affichage initial)
             html.Div(
                 id=INSPECTOR_DETAIL_ID,
                 className="inspector-detail",
@@ -105,39 +82,35 @@ def create_inspector(df: pd.DataFrame) -> html.Div:
     )
 
 
-# ─────────────────────────────────────────────────────────────────
-# Construction du panneau de détail (appelé depuis le callback)
-# ─────────────────────────────────────────────────────────────────
-
 def build_org_detail(df_org: pd.DataFrame, org_name: str | None) -> list:
     """
-    Construit le contenu du panneau de détail pour une organisation.
+    Génère la structure de la fiche détaillée d'une organisation spécifique.
+    Appelée dynamiquement par le callback de la page d'exploration.
 
     Args:
-        df_org: Sous-DataFrame contenant uniquement les bilans de
-            l'organisation sélectionnée (toutes années disponibles).
-        org_name: Nom complet de l'organisation (raison sociale).
+        df_org (pd.DataFrame): Données filtrées pour l'organisation sélectionnée.
+        org_name (str | None): Raison sociale de l'organisation.
 
     Returns:
-        list: Liste de composants Dash (children du conteneur de détail).
+        list: Liste de composants HTML constituant la fiche.
     """
-    # Cas 'aucune sélection' : on rend l'état vide.
+    # Si aucune organisation n'est sélectionnée, on retourne l'état vide informatif
     if not org_name or df_org.empty:
         return _empty_state()
 
-    # ── KPIs synthétiques ──────────────────────────────────────
+    # Calcul des statistiques clés de l'organisation
     total_t = float(df_org["total_emissions"].sum())
     total_str = _format_emissions(total_t)
     nb_years = int(df_org["annee_reporting"].nunique())
-    # Secteur NAF dominant (si plusieurs bilans avec NAF différents,
-    # on prend le plus fréquent - rare mais possible).
+    
+    # Identification du secteur NAF et de la région dominants
     naf_mode = df_org["libelle_naf"].mode()
     sector = naf_mode.iloc[0] if not naf_mode.empty else "—"
     region_mode = df_org["region"].mode()
     region = region_mode.iloc[0] if not region_mode.empty else "—"
 
     return [
-        # Header avec nom de l'org
+        # En-tête de la fiche d'identité de l'organisation
         html.Div(
             className="inspector-org-header",
             children=[
@@ -153,7 +126,7 @@ def build_org_detail(df_org: pd.DataFrame, org_name: str | None) -> list:
             ],
         ),
 
-        # 4 KPIs en ligne
+        # Grille de 4 cartes KPI résumant les chiffres clés
         html.Div(
             className="inspector-kpi-grid",
             children=[
@@ -179,10 +152,11 @@ def build_org_detail(df_org: pd.DataFrame, org_name: str | None) -> list:
             ],
         ),
 
-        # Grille 2 colonnes : évolution annuelle + donut scope
+        # Zone d'affichage des deux graphiques détaillés (Évolution et répartition des Scopes)
         html.Div(
             className="inspector-charts-grid",
             children=[
+                # Premier graphique : évolution dans le temps
                 html.Div(
                     className="inspector-chart-block",
                     children=[
@@ -196,6 +170,7 @@ def build_org_detail(df_org: pd.DataFrame, org_name: str | None) -> list:
                         ),
                     ],
                 ),
+                # Deuxième graphique : répartition en Scopes 1, 2, et 3
                 html.Div(
                     className="inspector-chart-block",
                     children=[
@@ -214,17 +189,15 @@ def build_org_detail(df_org: pd.DataFrame, org_name: str | None) -> list:
     ]
 
 
-# ─────────────────────────────────────────────────────────────────
-# Helpers privés - construction des sous-composants
-# ─────────────────────────────────────────────────────────────────
-
 def _build_org_options(df: pd.DataFrame) -> list[dict]:
     """
-    Construit la liste d'options du dropdown : une entrée par
-    organisation distincte, triée alphabétiquement.
+    Construit la liste des choix possibles (options) pour le dropdown.
 
-    On utilise raison_sociale comme value ET label : Dash gère
-    naturellement la recherche fuzzy sur les labels.
+    Args:
+        df (pd.DataFrame): DataFrame brut des données.
+
+    Returns:
+        list[dict]: Liste de dictionnaires {"label": nom, "value": nom}.
     """
     orgs = (
         df.dropna(subset=["raison_sociale"])
@@ -236,7 +209,12 @@ def _build_org_options(df: pd.DataFrame) -> list[dict]:
 
 
 def _empty_state() -> list:
-    """Affichage par défaut quand aucune organisation n'est sélectionnée."""
+    """
+    Génère l'affichage informatif par défaut quand aucun choix n'est sélectionné.
+
+    Returns:
+        list: Composants affichant une icône de loupe et un texte indicatif.
+    """
     return [
         html.Div(
             className="inspector-empty",
@@ -258,7 +236,18 @@ def _empty_state() -> list:
 
 
 def _kpi_card(icon: str, label: str, value: str, sublabel: str) -> html.Div:
-    """Mini KPI card pour le bandeau de l'inspecteur."""
+    """
+    Génère une petite carte KPI adaptée au panneau d'inspection.
+
+    Args:
+        icon (str): Icône SVG à intégrer.
+        label (str): Titre de l'indicateur.
+        value (str): Valeur numérique.
+        sublabel (str): Sous-titre textuel.
+
+    Returns:
+        html.Div: Composant HTML de la mini carte KPI.
+    """
     return html.Div(
         className="inspector-kpi",
         children=[
@@ -279,9 +268,13 @@ def _kpi_card(icon: str, label: str, value: str, sublabel: str) -> html.Div:
 
 def _build_evolution_chart(df_org: pd.DataFrame) -> go.Figure:
     """
-    Mini graphique d'évolution annuelle pour l'organisation sélectionnée.
-    Si une seule année déclarée, on affiche un point + un message
-    d'avertissement plutôt qu'une "courbe" trompeuse.
+    Construit le graphique en lignes représentant l'évolution annuelle des émissions.
+
+    Args:
+        df_org (pd.DataFrame): Données chronologiques de l'organisation.
+
+    Returns:
+        go.Figure: Graphique linéaire Plotly.
     """
     yearly = (
         df_org.groupby("annee_reporting")["total_emissions"]
@@ -291,6 +284,7 @@ def _build_evolution_chart(df_org: pd.DataFrame) -> go.Figure:
     )
 
     fig = go.Figure()
+    # Mode markers si une seule année, mode lines+markers si tendance possible
     fig.add_trace(go.Scatter(
         x=yearly["annee_reporting"],
         y=yearly["total_emissions"],
@@ -310,7 +304,7 @@ def _build_evolution_chart(df_org: pd.DataFrame) -> go.Figure:
         ),
     ))
 
-    # Avertissement si <2 années (lecture de tendance impossible).
+    # Message d'avertissement s'il n'y a pas assez de points de données pour tracer une courbe
     if len(yearly) < 2:
         fig.add_annotation(
             xref="paper", yref="paper",
@@ -332,7 +326,15 @@ def _build_evolution_chart(df_org: pd.DataFrame) -> go.Figure:
 
 
 def _build_scope_donut(df_org: pd.DataFrame) -> go.Figure:
-    """Mini donut Scope 1/2/3 pour l'organisation sélectionnée."""
+    """
+    Génère le graphique en secteurs (donut) pour la répartition des Scopes 1, 2, et 3.
+
+    Args:
+        df_org (pd.DataFrame): Données détaillées par Scope de l'organisation.
+
+    Returns:
+        go.Figure: Graphique Donut Plotly.
+    """
     s1 = float(df_org["total_scope_1"].sum())
     s2 = float(df_org["total_scope_2"].sum())
     s3 = float(df_org["total_scope_3"].sum())
@@ -341,7 +343,7 @@ def _build_scope_donut(df_org: pd.DataFrame) -> go.Figure:
     labels = ["Scope 1 — directes", "Scope 2 — énergie", "Scope 3 — indirectes"]
     colors = [SCOPE_COLORS["scope_1"], SCOPE_COLORS["scope_2"], SCOPE_COLORS["scope_3"]]
 
-    # Cas dégénéré : tous les scopes à 0 (très rare, mais possible).
+    # Cas exceptionnel de valeurs nulles sur tous les Scopes
     if sum(values) == 0:
         return _empty_donut()
 
@@ -349,7 +351,7 @@ def _build_scope_donut(df_org: pd.DataFrame) -> go.Figure:
     fig.add_trace(go.Pie(
         labels=labels,
         values=values,
-        hole=0.55,
+        hole=0.55, # Rendu sous forme d'anneau (Donut)
         marker=dict(colors=colors, line=dict(color=COLORS["surface"], width=2)),
         textinfo="percent",
         textfont=dict(family="DM Sans", size=12, color="#FFFFFF", weight=600),
@@ -367,7 +369,12 @@ def _build_scope_donut(df_org: pd.DataFrame) -> go.Figure:
 
 
 def _empty_donut() -> go.Figure:
-    """Donut vide quand aucun scope n'a de valeur."""
+    """
+    Génère un donut vide en cas d'absence d'information de Scope.
+
+    Returns:
+        go.Figure: Graphique d'avertissement.
+    """
     fig = go.Figure()
     fig.add_annotation(
         text="Aucun détail Scope renseigné",
@@ -383,7 +390,15 @@ def _empty_donut() -> go.Figure:
 
 
 def _format_emissions(total_t: float) -> str:
-    """Formate des émissions en t/Mt/Gt selon l'ordre de grandeur."""
+    """
+    Formate la valeur numérique des émissions en t, kt, Mt, Gt pour une lecture simplifiée.
+
+    Args:
+        total_t (float): Émissions brutes en tonnes.
+
+    Returns:
+        str: Valeur formatée accompagnée de l'unité appropriée.
+    """
     if total_t >= 1_000_000_000:
         return f"{total_t / 1_000_000_000:.2f}".replace(".", ",") + " Gt"
     if total_t >= 1_000_000:

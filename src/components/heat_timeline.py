@@ -1,93 +1,76 @@
 """
-Composant Heat Timeline : visualisation horizontale des années 2010-2025
-colorées par intensité d'émissions (vert → rouge). Chaque année devient
-une "cellule analytique" lisible d'un coup d'œil.
-
-Inspiré des plateformes de climate intelligence (Bloomberg ESG, ADEME).
-Le composant est synchronisé avec les filtres (année + structure) et met
-en évidence visuellement la plage sélectionnée par le RangeSlider.
-
-Rendu via plotly.go.Bar avec colorscale : permet d'afficher les années
-comme des barres courtes/uniformes colorées par intensité, avec la
-plage active surlignée.
+Composant Heat Timeline.
+Affiche une frise chronologique horizontale (de 2010 à 2025) sous forme de cellules de couleurs.
+La couleur de chaque année indique l'intensité globale des émissions de carbone (du vert au rouge).
 """
 
-# Permet la syntaxe PEP 604 (tuple[int, int] | None) sur Python 3.9 :
-# les annotations restent des chaînes et ne sont pas évaluées à l'import.
 from __future__ import annotations
 
 import pandas as pd
 import plotly.graph_objects as go
 
+# Importation du thème graphique commun
 from src.components.charts_theme import apply_theme, COLORS, SEQUENTIAL_HEATMAP
+
+# Bornes de début et fin de la frise chronologique
 from src.utils.common_functions import YEAR_MIN, YEAR_MAX
 
-
-# ─────────────────────────────────────────────────────────────────
-# FRONTEND – Composant graphique
-# ─────────────────────────────────────────────────────────────────
 
 def create_heat_timeline(
     df: pd.DataFrame,
     selected_range: tuple[int, int] | None = None,
 ) -> go.Figure:
     """
-    Construit la heat timeline année par année (2010-2025).
-    Chaque cellule représente une année, colorée par intensité d'émissions
-    cumulées (vert = faible, rouge = critique). La plage sélectionnée est
-    encadrée pour signaler le périmètre actif.
+    Construit la figure Plotly de la frise chronologique thermique.
 
     Args:
-        df: DataFrame filtré par structure UNIQUEMENT (toutes années
-            visibles pour montrer la trajectoire complète).
-        selected_range: Tuple (year_start, year_end) à mettre en évidence.
-            Si None, on prend toute la période.
+        df (pd.DataFrame): Données à analyser par année.
+        selected_range (tuple[int, int] | None): Intervalle d'années sélectionné (début, fin).
 
     Returns:
-        go.Figure: Heat timeline Plotly prête à passer à dcc.Graph.
+        go.Figure: Figure Plotly représentant la frise chronologique.
     """
-    # Calcul des émissions totales par année sur toute la période 2010-2025.
-    # On force la présence de toutes les années (même celles à 0) avec
-    # reindex pour que la timeline soit toujours complète visuellement.
+    # Agrégation des émissions globales par année de reporting.
+    # reindex() garantit que toutes les années entre les bornes minimales et maximales
+    # sont présentes, même si leurs émissions sont nulles.
     yearly = (
         df.groupby("annee_reporting")["total_emissions"]
           .sum()
           .reindex(range(YEAR_MIN, YEAR_MAX + 1), fill_value=0)
           .reset_index()
     )
+    # Renommage explicite des colonnes
     yearly.columns = ["annee", "emissions"]
 
-    # Plage sélectionnée par défaut : toute la période.
+    # Si aucune plage d'années n'est sélectionnée, on prend toute la période par défaut
     if selected_range is None:
         selected_range = (YEAR_MIN, YEAR_MAX)
 
     start_year, end_year = selected_range
 
-    # Marquer chaque année comme "in_selection" ou "out_selection" pour
-    # piloter l'opacité visuelle (les années hors sélection sont atténuées).
+    # Détection des années qui font partie de l'intervalle sélectionné
     yearly["in_selection"] = yearly["annee"].between(start_year, end_year)
+    
+    # Application d'une opacité différente : 100% si sélectionnée, atténuée à 35% si hors sélection
     yearly["opacity"] = yearly["in_selection"].map({True: 1.0, False: 0.35})
 
-    # Conversion en MtCO2eq pour les hovers (les valeurs brutes en
-    # tonnes deviennent vite illisibles à 9-10 chiffres).
+    # Conversion des émissions en millions de tonnes (MtCO2eq) pour simplifier l'affichage
     yearly["emissions_mt"] = yearly["emissions"] / 1_000_000
 
-    # Construction de la figure : barres uniformes (height = 1, color =
-    # intensité). On utilise une seule trace go.Bar avec couleur par
-    # marker.color (mapping interne via colorscale).
     fig = go.Figure()
 
+    # Ajout du tracé des barres uniformes de la frise chronologique
     fig.add_trace(go.Bar(
         x=yearly["annee"],
-        y=[1] * len(yearly),  # hauteur uniforme : on veut une bande, pas un chart
+        y=[1] * len(yearly),  # Hauteur uniforme pour toutes les barres afin de former une bande continue
         marker=dict(
             color=yearly["emissions"],
             colorscale=SEQUENTIAL_HEATMAP,
             showscale=False,
             opacity=yearly["opacity"],
-            line=dict(color=COLORS["surface"], width=2),
+            line=dict(color=COLORS["surface"], width=2), # Bordures blanches fines
         ),
-        # Affichage de l'année dans la barre pour lecture immédiate
+        # Affichage direct du texte de l'année à l'intérieur de chaque barre
         text=yearly["annee"].astype(str),
         textposition="inside",
         insidetextanchor="middle",
@@ -97,7 +80,7 @@ def create_heat_timeline(
             color="#FFFFFF",
             weight=600,
         ),
-        # Hover : année + émissions en Mt
+        # Données personnalisées transmises à l'infobulle au survol
         customdata=yearly[["emissions_mt", "in_selection"]].values,
         hovertemplate=(
             "<b>%{x}</b><br>"
@@ -112,8 +95,7 @@ def create_heat_timeline(
         showlegend=False,
     ))
 
-    # Annotation des bornes sélectionnées : petite flèche en bas indiquant
-    # le périmètre actif (renforce visuellement le RangeSlider du dessus).
+    # Ajout d'une annotation textuelle en bas à gauche pour marquer le début de la sélection
     fig.add_annotation(
         x=start_year, y=-0.4,
         xref="x", yref="y",
@@ -121,6 +103,7 @@ def create_heat_timeline(
         showarrow=False,
         font=dict(family="DM Sans", size=11, color=COLORS["primary"]),
     )
+    # Ajout d'une annotation textuelle en bas à droite pour marquer la fin de la sélection
     if end_year != start_year:
         fig.add_annotation(
             x=end_year, y=-0.4,
@@ -130,15 +113,15 @@ def create_heat_timeline(
             font=dict(family="DM Sans", size=11, color=COLORS["primary"]),
         )
 
-    # Configuration des axes : on retire tout (titre, ticks, grille)
-    # pour ne garder que la "bande" colorée et propre.
+    # Masquage des graduations et grilles de l'axe des abscisses (X)
     fig.update_xaxes(
         showgrid=False,
-        showticklabels=False,  # années déjà inscrites dans les barres
+        showticklabels=False,
         zeroline=False,
         showline=False,
         range=[YEAR_MIN - 0.5, YEAR_MAX + 0.5],
     )
+    # Masquage de l'axe des ordonnées (Y)
     fig.update_yaxes(
         showgrid=False,
         showticklabels=False,
@@ -148,8 +131,7 @@ def create_heat_timeline(
         fixedrange=True,
     )
 
-    # Layout compact : timeline = bande de 110px de hauteur, marges très
-    # réduites pour un look "barre de navigation analytique".
+    # Réglage de la hauteur compacte et des marges minimales de la frise chronologique
     fig.update_layout(
         bargap=0.04,
         margin=dict(t=10, b=10, l=10, r=10),
