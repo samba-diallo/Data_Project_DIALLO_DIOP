@@ -1,11 +1,16 @@
 """
 Module de nettoyage et de préparation des données brutes de l'ADEME.
-Charge le fichier Excel d'origine, applique des filtres de qualité (déduplication,
-normalisation des noms de région, suppression des caractères spéciaux), puis calcule
-les émissions cumulées par Scope carbone (Scope 1, 2, 3 et Total).
+Charge la table `raw` de la base SQLite, applique des filtres de qualité
+(déduplication, normalisation des noms de région, suppression des
+caractères PUA), puis écrit la table `cleaned` dans la même base.
+
+Stockage SQLite imposé par le cahier des charges : une seule base
+`data/db.sqlite` avec deux tables (`raw` et `cleaned`).
 """
 
 import os
+import sqlite3
+
 import pandas as pd
 import config
 
@@ -57,18 +62,27 @@ REGIONS_TO_EXCLUDE: set[str] = {"DR ADEME"}
 
 def load_raw_data() -> pd.DataFrame:
     """
-    Charge le fichier Excel brut de l'ADEME.
+    Charge le DataFrame brut depuis la table `raw` de la base SQLite.
 
     Returns:
-        pd.DataFrame: Données brutes lues à partir de l'onglet défini dans la configuration.
+        pd.DataFrame: Données brutes telles que stockées par get_data.py.
+
+    Raises:
+        FileNotFoundError: Si la base SQLite n'existe pas
+                           (lancer get_data au préalable).
     """
-    if not os.path.exists(config.DATA_RAW):
+    # Vérification explicite avant pd.read_sql pour produire un message
+    # d'erreur parlant et la commande de réparation correspondante.
+    if not os.path.exists(config.DATABASE):
         raise FileNotFoundError(
-            f"Fichier brut introuvable : {config.DATA_RAW}\n"
-            "Lancer 'python -m src.utils.get_data' pour le télécharger."
+            f"Base SQLite introuvable : {config.DATABASE}\n"
+            "Lancer 'python -m src.utils.get_data' pour la créer."
         )
 
-    return pd.read_excel(config.DATA_RAW, sheet_name=config.DATA_SHEET)
+    # Connexion en lecture seule du DataFrame brut. pd.read_sql_table
+    # nécessiterait SQLAlchemy ; pd.read_sql_query reste sur sqlite3 stdlib.
+    with sqlite3.connect(config.DATABASE) as conn:
+        return pd.read_sql_query(f"SELECT * FROM {config.TABLE_RAW}", conn)
 
 
 def remove_duplicates(df: pd.DataFrame) -> pd.DataFrame:
@@ -94,6 +108,9 @@ def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame épuré des lignes sans coordonnées de base.
     """
+    # `how="any"` (défaut) : on supprime dès qu'au moins une des deux colonnes
+    # critiques est manquante. Les NaN restants (postes d'émissions) sont
+    # conservés — ils représentent une non-déclaration, pas un zéro réel.
     return df.dropna(subset=["Région", "Année de reporting"])
 
 
@@ -127,18 +144,33 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def save_cleaned_data(df: pd.DataFrame) -> None:
     """
-    Sauvegarde le jeu de données nettoyé au format CSV (encodage UTF-8).
+    Sauvegarde le DataFrame nettoyé dans la table `cleaned` de la base
+    SQLite `data/db.sqlite`. Remplace la table existante pour rester
+    idempotent (ré-exécuter clean_data écrase la table).
 
     Args:
         df (pd.DataFrame): DataFrame final prêt pour l'application.
     """
-    os.makedirs(os.path.dirname(config.DATA_CLEAN), exist_ok=True)
-    df.to_csv(config.DATA_CLEAN, index=False, encoding="utf-8")
+    # Création du répertoire parent au cas où (sécurité, normalement
+    # déjà créé par get_data.save_raw_data).
+    os.makedirs(os.path.dirname(config.DATABASE), exist_ok=True)
+
+    # Écriture dans la même base que les données brutes, mais dans une
+    # table distincte `cleaned`. if_exists="replace" garantit que la
+    # table reflète toujours le dernier nettoyage.
+    with sqlite3.connect(config.DATABASE) as conn:
+        df.to_sql(
+            config.TABLE_CLEAN,
+            con=conn,
+            if_exists="replace",
+            index=False,
+        )
 
 
 def main() -> None:
     """
     Orchestrateur principal du script de nettoyage.
+    Lit la table `raw`, applique le pipeline en 4 étapes, écrit `cleaned`.
     """
     df = load_raw_data()
     df = remove_duplicates(df)
@@ -148,7 +180,7 @@ def main() -> None:
     save_cleaned_data(df)
 
     print(f"Données nettoyées : {len(df):,} lignes × {df.shape[1]} colonnes")
-    print(f"Sauvegardé dans : {config.DATA_CLEAN}")
+    print(f"Sauvegardé dans : {config.DATABASE} (table {config.TABLE_CLEAN})")
 
 
 def _strip_pua_characters(df: pd.DataFrame) -> pd.DataFrame:

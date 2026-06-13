@@ -1,9 +1,15 @@
 """
 Fonctions utilitaires partagées par l'ensemble des modules de l'application.
 Regroupe les méthodes de chargement des données propres, de filtrage dynamique et d'agrégation.
+
+Source des données : table `cleaned` de la base SQLite `data/db.sqlite`
+(générée par src/utils/clean_data.py).
 """
 
+import os
+import sqlite3
 from typing import Any
+
 import pandas as pd
 import config
 
@@ -16,15 +22,33 @@ YEAR_MAX: int = 2025
 
 def load_cleaned_data() -> pd.DataFrame:
     """
-    Charge le fichier CSV de données nettoyées et applique les bornes temporelles.
+    Charge le DataFrame nettoyé depuis la table `cleaned` de la base SQLite
+    et applique les bornes temporelles officielles [YEAR_MIN, YEAR_MAX].
 
     Returns:
         pd.DataFrame: Données prêtes à l'analyse et restreintes sur l'intervalle [2010, 2025].
-    """
-    # Lecture du fichier CSV à l'aide de pandas
-    df = pd.read_csv(config.DATA_CLEAN)
 
-    # Restriction stricte des données entre 2010 et 2025 pour assurer la cohérence des graphiques
+    Raises:
+        FileNotFoundError: Si la base SQLite n'a pas encore été générée.
+    """
+    # Garde-fou pour produire un message d'erreur explicite si la base
+    # n'existe pas (l'utilisateur n'a pas encore lancé get_data + clean_data).
+    if not os.path.exists(config.DATABASE):
+        raise FileNotFoundError(
+            f"Base SQLite introuvable : {config.DATABASE}\n"
+            "Lancer 'python -m src.utils.get_data' "
+            "puis 'python -m src.utils.clean_data'."
+        )
+
+    # Connexion SQLite + lecture de la table `cleaned`. On reste sur
+    # sqlite3 + pandas.read_sql_query (pas besoin de SQLAlchemy comme
+    # dépendance supplémentaire).
+    with sqlite3.connect(config.DATABASE) as conn:
+        df = pd.read_sql_query(f"SELECT * FROM {config.TABLE_CLEAN}", conn)
+
+    # Restriction stricte des données entre 2010 et 2025 pour assurer
+    # la cohérence des graphiques (filtrage centralisé : toutes les
+    # pages voient la même période).
     df = df[df["annee_reporting"].between(YEAR_MIN, YEAR_MAX)].copy()
     return df  # pyrefly: ignore
 
