@@ -125,6 +125,22 @@ def register_callbacks(app: dash.Dash) -> None:
         page_module.register_callbacks(app)
 
 
+# ── Initialisation Automatique des Données ──────────────────────
+# Si la base SQLite n'existe pas encore (ex: après un clone git),
+# on l'initialise automatiquement à partir des fichiers bruts locaux ou de l'API.
+import os
+if not os.path.exists(config.DATABASE):
+    print("Base de données SQLite manquante. Initialisation automatique...")
+    try:
+        from src.utils.get_data import main as init_get_data
+        from src.utils.clean_data import main as init_clean_data
+        init_get_data()
+        init_clean_data()
+        print("Initialisation de la base SQLite terminée avec succès.")
+    except Exception as e:
+        print(f"Erreur lors de l'initialisation automatique : {e}")
+
+
 # Étape 1 : Création de l'application Dash
 app = create_app()
 
