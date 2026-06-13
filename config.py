@@ -32,13 +32,18 @@ def _env_bool(name: str, default: bool) -> bool:
 # Répertoire de base contenant ce fichier de configuration
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 
-# Fichier contenant les données initiales brutes de l'ADEME
-DATA_RAW    = os.path.join(BASE_DIR, "data", "raw", "bilan-ges.xlsx")
-
-# Fichier CSV contenant les données nettoyées et prêtes pour l'analyse
-DATA_CLEAN  = os.path.join(BASE_DIR, "data", "cleaned", "cleaneddata.csv")
+# Base SQLite unique imposée par le cahier des charges (D. Courivaud, ESIEE).
+# Une seule base regroupe deux tables :
+#   - `raw`     : données brutes ADEME telles que téléchargées
+#   - `cleaned` : données nettoyées et exploitables par le dashboard
+# Avantage : pas de gestion manuelle de chemins multiples (xlsx + csv),
+# atomicité des écritures, et lecture filtrée paresseuse via pandas.read_sql.
+DATABASE    = os.path.join(BASE_DIR, "data", "db.sqlite")
+TABLE_RAW   = "raw"
+TABLE_CLEAN = "cleaned"
 
 # Nom de la feuille de calcul Excel à extraire du fichier d'origine de l'ADEME
+# (utilisé uniquement en transit dans get_data.py, avant écriture en base).
 DATA_SHEET  = "données"
 
 # ── Source distante des données ──────────────────────────────────
