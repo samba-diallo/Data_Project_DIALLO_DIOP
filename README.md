@@ -9,6 +9,12 @@
 >
 > Déployé sur Render (plan gratuit). Premier accès après une période d'inactivité : ~30 s de réveil, puis instantané.
 
+### 🎬 Vidéo de démonstration (3 min)
+
+> ### [▶ Regarder la démo — SharePoint ESIEE](https://esieeparis-my.sharepoint.com/:v:/g/personal/samba_diallo_edu_esiee_fr/IQAmYN8NfWQ1S5KT1-0IfSLcAT4mP3fKw-22aMhAq--Ls08?e=T4Pt6S&nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXcifX0%3D)
+>
+> Présentation guidée des trois pages du dashboard (Vue d'ensemble, Explorer, Méthodologie). Hébergement OneDrive ESIEE.
+
 ---
 
 GES Insight donne une vue d'ensemble de la déclaration des émissions de gaz
@@ -76,6 +82,12 @@ Le dashboard est déployé en ligne et consultable immédiatement :
 Hébergement Render (plan gratuit) — le service s'endort après 15 min
 d'inactivité, le premier accès peut donc prendre environ 30 secondes le
 temps du réveil, puis la navigation devient instantanée.
+
+### Vidéo de démonstration
+
+Présentation guidée des trois pages du dashboard (3 minutes) :
+
+**🎬 [Voir la démo sur SharePoint ESIEE](https://esieeparis-my.sharepoint.com/:v:/g/personal/samba_diallo_edu_esiee_fr/IQAmYN8NfWQ1S5KT1-0IfSLcAT4mP3fKw-22aMhAq--Ls08?e=T4Pt6S&nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXcifX0%3D)**
 
 ### Prérequis
 
