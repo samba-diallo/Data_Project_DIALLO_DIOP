@@ -56,6 +56,32 @@ SEQUENTIAL_GREEN: list[str] = [
 ]
 
 
+# Échelle ENVIRONNEMENTALE (heatmap) pour la cartographie GES.
+# Inspirée des cartes météo / plateformes climatiques professionnelles :
+# du vert (faible) au rouge (critique) en passant par jaune et orange.
+# Plus parlante intuitivement qu'un dégradé monochrome pour l'utilisateur
+# final - tout le monde lit "vert = bon, rouge = problème" sans légende.
+SEQUENTIAL_HEATMAP: list[list] = [
+    [0.00, "#1F7A4A"],  # vert profond - faibles émissions
+    [0.20, "#7FB069"],  # vert clair
+    [0.40, "#F2D74E"],  # jaune
+    [0.60, "#F4A261"],  # orange clair
+    [0.80, "#E76F51"],  # orange foncé
+    [1.00, "#A91E2C"],  # rouge profond - émissions critiques
+]
+
+
+# Couleurs des trois scopes BEGES (cohérentes sur tout le dashboard).
+# Convention : Scope 1 (directes) = couleur principale du thème,
+# Scope 2 (énergie) = vert mousse intermédiaire, Scope 3 (chaîne de
+# valeur, le plus diffus) = or pâle pour différencier visuellement.
+SCOPE_COLORS: dict[str, str] = {
+    "scope_1": "#1F3A2C",  # vert profond (directes)
+    "scope_2": "#5C7A4D",  # vert mousse (énergie)
+    "scope_3": "#C9A961",  # or pâle (indirectes)
+}
+
+
 # ─────────────────────────────────────────────────────────────────
 # APPLICATION DU THEME
 # ─────────────────────────────────────────────────────────────────

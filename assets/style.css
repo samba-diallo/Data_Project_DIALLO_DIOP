@@ -419,7 +419,7 @@ a:hover {
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     padding: var(--space-6);
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-6);
     box-shadow: var(--shadow-sm);
     /* Sticky : reste visible quand on scrolle dans les graphes en
        dessous - permet d'ajuster les filtres sans remonter la page */
@@ -427,6 +427,26 @@ a:hover {
     /* top calcule pour rester sous la navbar (qui mesure ~56px) */
     top: 70px;
     z-index: 40;
+}
+
+/* En-tete de la barre de filtres : icone + titre pour identifier
+   immediatement la zone de controle (Design.md : "filters
+   immediately visible"). */
+.filters-bar-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.filters-bar-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-base);
+    font-weight: 600;
+    color: var(--color-text);
+    letter-spacing: -0.01em;
 }
 
 .filter-label {
@@ -502,23 +522,486 @@ a:hover {
 
 
 /* ============================================================
-   12. Layout Explorer : carte + histogramme cote a cote
+   12. Layout Explorer : page large + sections empilees
    ------------------------------------------------------------
-   Utilise CSS Grid pour un agencement responsive : 60/40 sur
-   desktop large, empile sur tablette et mobile.
+   Le redesign Design.md privilegie une grande carte sur toute la
+   largeur, suivie de l'histogramme et du Top organisations egalement
+   en pleine largeur. Plus de grille 60/40 - chaque visualisation
+   beneficie d'une lecture optimale (modele weather/GIS).
    ============================================================ */
-.explorer-grid {
+.explorer-page {
+    /* Container plus large que page-container standard (1280 -> 1480px)
+       pour donner de l'air a la grande carte (720px de hauteur). */
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 0 var(--space-8);
+}
+
+/* Section header avec icone + titre + sous-titre (look "panneau
+   d'analyse" inspire des dashboards climatiques). */
+.section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.section-header-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    background-color: rgba(31, 58, 44, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.section-header .section-title {
+    margin-bottom: var(--space-2);
+}
+
+.section-header .section-subtitle {
+    margin-bottom: 0;
+}
+
+/* Variante "carte" : padding plus petit pour maximiser la surface
+   utile de la choroplethe. */
+.chart-card-map {
+    padding: var(--space-2);
+}
+
+
+/* ============================================================
+   12b. Stats banner (page Explorer) - 5 stats contextuelles
+   ------------------------------------------------------------
+   Bandeau horizontal sous le heat timeline qui affiche en temps reel
+   le contexte de la selection courante (combien de bilans, evolution %,
+   region #1, etc.). Equivalent du "summary bar" des dashboards
+   analytiques enterprise.
+   ============================================================ */
+.stats-banner {
     display: grid;
-    grid-template-columns: 1.5fr 1fr;
-    gap: var(--space-6);
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-4);
     margin-bottom: var(--space-8);
 }
 
-/* Sur ecran moyen et petit : empile verticalement */
-@media (max-width: 992px) {
-    .explorer-grid {
+.stat-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition);
+}
+
+.stat-item:hover {
+    box-shadow: var(--shadow);
+}
+
+.stat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background-color: rgba(201, 169, 97, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-label {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+
+.stat-value {
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 600;
+    color: var(--color-primary);
+    line-height: 1.15;
+    margin-bottom: 2px;
+    /* Tronque proprement les libelles longs (ex: noms de regions) */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-sublabel {
+    font-size: var(--fs-xs);
+    color: var(--color-text-subtle);
+    line-height: 1.3;
+}
+
+.stats-banner-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: var(--space-6);
+    color: var(--color-text-muted);
+    font-style: italic;
+    background-color: var(--color-surface);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius);
+}
+
+/* Variantes du stat-item selon le sens de la tendance.
+   Convention climat : baisse = vert (positif), hausse = rouge (negatif). */
+.stat-item.stat-trend-down .stat-icon {
+    background-color: rgba(22, 163, 74, 0.12);
+}
+
+.stat-item.stat-trend-down .stat-icon svg {
+    color: var(--color-success) !important;
+}
+
+.stat-item.stat-trend-down .stat-value {
+    color: var(--color-success);
+}
+
+.stat-item.stat-trend-up .stat-icon {
+    background-color: rgba(185, 28, 28, 0.10);
+}
+
+.stat-item.stat-trend-up .stat-icon svg {
+    color: var(--color-danger) !important;
+}
+
+.stat-item.stat-trend-up .stat-value {
+    color: var(--color-danger);
+}
+
+.stat-item.stat-trend-neutral .stat-icon {
+    background-color: rgba(107, 107, 107, 0.10);
+}
+
+.stat-item.stat-trend-neutral .stat-icon svg {
+    color: var(--color-text-muted) !important;
+}
+
+/* Responsive : 3 colonnes sur tablette, 1 sur mobile */
+@media (max-width: 1200px) {
+    .stats-banner {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-banner {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .stats-banner {
         grid-template-columns: 1fr;
     }
+}
+
+
+/* ============================================================
+   12d. View toggle (RadioItems styles en button-group)
+   ------------------------------------------------------------
+   Selecteur 3 vues pour l'histogramme : Top emetteurs / Paliers /
+   Secteurs. Apparence "segmented control" inspire des dashboards
+   analytiques pro.
+   ============================================================ */
+.view-toggle {
+    display: inline-flex;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 3px;
+    gap: 0;
+    margin-left: var(--space-4);
+    flex-shrink: 0;
+}
+
+.view-toggle .view-toggle-input {
+    /* On masque la radio native, le label sert de bouton visuel */
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+}
+
+.view-toggle .view-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-4);
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition);
+    user-select: none;
+    white-space: nowrap;
+}
+
+.view-toggle .view-toggle-label:hover {
+    color: var(--color-text);
+    background-color: rgba(31, 58, 44, 0.04);
+}
+
+/* Etat selectionne : on cible le label adjacent au input:checked */
+.view-toggle .view-toggle-input:checked + .view-toggle-label,
+.view-toggle label:has(input:checked) {
+    background-color: var(--color-primary);
+    color: var(--color-surface);
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Section header avec le toggle a droite : on switch a row layout */
+.section-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+
+/* ============================================================
+   12e. Inspecteur d'organisation (page Explorer)
+   ------------------------------------------------------------
+   Panneau de recherche + detail d'une organisation parmi les 6810
+   declarants. Look "fiche analytique" : entete + 4 KPIs + 2 charts.
+   ============================================================ */
+.inspector-panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-sm);
+}
+
+.inspector-search-bar {
+    margin-bottom: var(--space-6);
+}
+
+.inspector-search-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.inspector-search-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-base);
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.inspector-search-hint {
+    font-size: var(--fs-xs);
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+/* Override du Dropdown Dash pour aerer et cohere avec le theme */
+.inspector-dropdown .Select-control,
+.inspector-dropdown .Select-input {
+    border-color: var(--color-border) !important;
+    border-radius: var(--radius) !important;
+    font-family: var(--font-body) !important;
+    min-height: 44px;
+}
+
+.inspector-dropdown .Select-placeholder,
+.inspector-dropdown .Select-input > input {
+    color: var(--color-text-muted) !important;
+    font-size: var(--fs-sm) !important;
+    line-height: 44px !important;
+}
+
+/* Etat vide : message d'invite */
+.inspector-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding: var(--space-8) var(--space-6);
+    text-align: center;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius);
+    background-color: var(--color-bg);
+}
+
+.inspector-empty-text {
+    color: var(--color-text-muted);
+    font-size: var(--fs-sm);
+    max-width: 50ch;
+    margin: 0;
+}
+
+/* Header avec nom + meta (secteur + region) */
+.inspector-org-header {
+    margin-bottom: var(--space-5);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.inspector-org-name {
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 600;
+    color: var(--color-primary);
+    margin: 0 0 var(--space-2) 0;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.inspector-org-meta {
+    font-size: var(--fs-sm);
+    color: var(--color-text-muted);
+}
+
+.inspector-org-sep {
+    color: var(--color-border);
+}
+
+/* Grille de 4 KPIs */
+.inspector-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+}
+
+.inspector-kpi {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+}
+
+.inspector-kpi-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background-color: rgba(31, 58, 44, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.inspector-kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.inspector-kpi-value {
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 600;
+    color: var(--color-primary);
+    line-height: 1.2;
+    margin-top: 2px;
+}
+
+.inspector-kpi-sublabel {
+    font-size: var(--fs-xs);
+    color: var(--color-text-subtle);
+    margin-top: 2px;
+}
+
+/* Grille 2 charts cote a cote (evolution + donut scope) */
+.inspector-charts-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: var(--space-4);
+}
+
+.inspector-chart-block {
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+}
+
+.inspector-chart-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-base);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 var(--space-2) 0;
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+}
+
+/* Responsive : sur mobile/tablette, KPIs en 2 colonnes, charts empiles */
+@media (max-width: 992px) {
+    .inspector-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .inspector-charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* ============================================================
+   12c. Heat Timeline (page Explorer)
+   ------------------------------------------------------------
+   Bandeau horizontal sous les filtres : chaque annee 2010-2025 est
+   coloree par intensite d'emissions (vert -> rouge). Inspiration
+   plateformes climate intelligence (Bloomberg ESG, ADEME).
+   ============================================================ */
+.heat-timeline-container {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--space-4) var(--space-5);
+    margin-bottom: var(--space-6);
+    box-shadow: var(--shadow-sm);
+}
+
+.heat-timeline-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-2);
+}
+
+.heat-timeline-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--color-text);
+    letter-spacing: -0.005em;
+}
+
+.heat-timeline-hint {
+    font-size: var(--fs-xs);
+    color: var(--color-text-muted);
+    font-style: italic;
 }
 
 

@@ -14,6 +14,9 @@ from dash import html, dcc
 # DashIconify : icônes SVG pour décorer les labels de filtres
 from dash_iconify import DashIconify
 
+# Période officielle (2010-2025) - source de vérité unique
+from src.utils.common_functions import YEAR_MIN, YEAR_MAX
+
 
 # ─────────────────────────────────────────────────────────────────
 # IDs des filtres (centralisés ici pour être référencés par les
@@ -42,24 +45,40 @@ def create_filters_bar(df: pd.DataFrame) -> html.Div:
     Returns:
         html.Div: Conteneur Dash avec les 3 filtres + bouton de reset.
     """
-    # Calcul des bornes du slider d'années à partir des données réelles
-    # plutôt que d'en hardcoder. Si le dataset s'enrichit, le slider suit.
-    annee_min = int(df["annee_reporting"].min())
-    annee_max = int(df["annee_reporting"].max())
+    # Bornes du slider d'années : on utilise les CONSTANTES officielles
+    # (2010-2025) pour garantir la cohérence visuelle imposée par
+    # Design.md, indépendamment des éventuelles années marginales
+    # encore présentes dans le dataset après filtrage.
+    annee_min = YEAR_MIN
+    annee_max = YEAR_MAX
 
     # Liste triée des régions disponibles (pour Dropdown).
     # On exclut explicitement les NaN avec dropna().
     regions = sorted(df["region"].dropna().unique())
 
-    # Liste triée des types de structure (4 valeurs typiques).
+    # Liste triée des types de structure (4-5 valeurs typiques).
     structures = sorted(df["type_structure"].dropna().unique())
 
     return html.Div(
         className="filters-bar",
         children=[
+            # Mini titre éditorial pour ancrer la zone de filtres dans
+            # la hiérarchie visuelle de la page (cohérence avec Design.md
+            # qui demande des filtres immédiatement visibles et identifiables).
+            html.Div(
+                className="filters-bar-header",
+                children=[
+                    DashIconify(
+                        icon="tabler:adjustments-horizontal",
+                        width=18,
+                        color="#1F3A2C",
+                    ),
+                    html.Span("Filtres d'exploration", className="filters-bar-title"),
+                ],
+            ),
             # Container interne pour la grille responsive Bootstrap
             html.Div(
-                className="row g-3 align-items-end",
+                className="row g-4 align-items-end",
                 children=[
                     _build_year_filter(annee_min, annee_max),
                     _build_region_filter(regions),
@@ -85,8 +104,7 @@ def _build_year_filter(annee_min: int, annee_max: int) -> html.Div:
             _build_label("tabler:calendar-stats", "Plage d'années"),
 
             # dcc.RangeSlider : double curseur permettant de sélectionner
-            # une plage continue d'années. Plus pratique qu'un Dropdown
-            # pour des données temporelles.
+            # une plage continue d'années sur la période officielle 2010-2025.
             dcc.RangeSlider(
                 id=FILTER_YEAR_RANGE_ID,
                 min=annee_min,
@@ -94,12 +112,19 @@ def _build_year_filter(annee_min: int, annee_max: int) -> html.Div:
                 # value : valeur initiale = plage complète
                 value=[annee_min, annee_max],
                 step=1,
-                # marks : tous les ticks pour permettre la lecture rapide ;
-                # on n'affiche un label que tous les 2 ans pour éviter
-                # un encombrement visuel sur 18 années.
+                # marks : on affiche un label tous les 3 ans (2010, 2013,
+                # 2016, 2019, 2022, 2025) pour une lecture sans encombrement.
+                # Les ticks intermédiaires restent présents (step=1).
                 marks={
-                    year: str(year) if year % 2 == 0 else ""
-                    for year in range(annee_min, annee_max + 1)
+                    year: {
+                        "label": str(year),
+                        "style": {
+                            "fontSize": "11px",
+                            "color": "#6B6B6B",
+                            "fontFamily": "DM Sans, sans-serif",
+                        },
+                    }
+                    for year in range(annee_min, annee_max + 1, 3)
                 },
                 # tooltip : affiche la valeur courante au survol du curseur.
                 tooltip={"placement": "bottom", "always_visible": False},

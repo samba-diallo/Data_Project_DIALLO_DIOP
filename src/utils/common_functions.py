@@ -15,24 +15,45 @@ import config
 
 
 # ─────────────────────────────────────────────────────────────────
+# CONSTANTES GLOBALES – Période d'étude officielle
+# ─────────────────────────────────────────────────────────────────
+
+# Période standardisée pour TOUS les graphiques et filtres du dashboard.
+# - 2010 : début de l'obligation réglementaire BEGES (loi Grenelle II)
+# - 2025 : dernière année complète de reporting disponible
+# Les bilans 2026 sont exclus car les déclarations ne sont pas encore
+# publiées (ADEME publie en N+1). Les années < 2010 sont anecdotiques
+# (quelques dizaines de bilans, biais d'analyse).
+YEAR_MIN: int = 2010
+YEAR_MAX: int = 2025
+
+
+# ─────────────────────────────────────────────────────────────────
 # BACKEND – Données / Commun
 # ─────────────────────────────────────────────────────────────────
 
 def load_cleaned_data() -> pd.DataFrame:
     """
-    Charge les données nettoyées depuis data/cleaned/.
-    Fonction partagée par tous les composants du dashboard pour éviter
-    de lire le CSV plusieurs fois.
+    Charge les données nettoyées depuis data/cleaned/ et applique le
+    filtre de période officielle [YEAR_MIN, YEAR_MAX] pour garantir
+    la cohérence de toutes les visualisations du dashboard.
 
     Returns:
-        pd.DataFrame: DataFrame nettoyé prêt à l'emploi.
+        pd.DataFrame: DataFrame nettoyé filtré sur 2010-2025.
 
     Raises:
         FileNotFoundError: Si le fichier nettoyé n'existe pas.
     """
     # Lecture simple du CSV produit par clean_data.main(). pandas gère
     # automatiquement l'inférence des types numériques.
-    return pd.read_csv(config.DATA_CLEAN)
+    df = pd.read_csv(config.DATA_CLEAN)
+
+    # Application du filtre de période OFFICIELLE.
+    # On filtre ici (point central) plutôt que dans chaque composant pour
+    # garantir que toutes les pages voient la même période et éviter les
+    # incohérences (ex: KPI sur 2009-2026 vs slider 2010-2025).
+    df = df[df["annee_reporting"].between(YEAR_MIN, YEAR_MAX)].copy()
+    return df
 
 
 def filter_data(df: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
