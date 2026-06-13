@@ -7,6 +7,11 @@ Usage :
     $ python main.py
 """
 
+# Permet la syntaxe d'annotations PEP 604 (X | None) et PEP 585
+# (list[str], dict[str, ...]) sur Python 3.9 — les annotations sont
+# évaluées comme des chaînes et n'imposent plus la version 3.10+.
+from __future__ import annotations
+
 # dash : framework principal du dashboard
 import dash
 from dash import html, dcc, Input, Output
@@ -142,19 +147,22 @@ def register_callbacks(app: dash.Dash) -> None:
         page_module.register_callbacks(app)
 
 
+# Construction en 3 étapes claires : création -> layout -> callbacks
+app = create_app()
+define_layout(app)
+register_callbacks(app)
+
+# Expose le serveur Flask pour les serveurs de production WSGI (comme gunicorn)
+server = app.server
+
+
 def main() -> None:
     """
-    Initialise l'application Dash, définit son layout, enregistre les
-    callbacks et démarre le serveur web.
+    Démarre le serveur de développement local.
 
     Returns:
         None
     """
-    # Construction en 3 étapes claires : création -> layout -> callbacks
-    app = create_app()
-    define_layout(app)
-    register_callbacks(app)
-
     # app.run() (et non plus app.run_server() qui est déprécié) : nouvelle
     # méthode préconisée par Dash 2.x. Évite le DeprecationWarning console.
     # debug, host, port viennent de config.py (pilotables par variables
@@ -170,3 +178,4 @@ def main() -> None:
 # un autre module (ex: tests).
 if __name__ == "__main__":
     main()
+
