@@ -8,7 +8,7 @@ Structure :
 4. Carte choroplèthe (France complète toujours visible)
 5. Inspecteur d'organisations (recherche + détail bilan)
 6. Histogramme multi-vues (top organisations, paliers, secteurs)
-7. Décomposition Scope 1/2/3 (top 15 organisations)
+
 
 Architecture de filtrage à 2 niveaux :
 - df_year_struct : filtres année + structure (toutes régions visibles)
@@ -250,7 +250,7 @@ def layout() -> html.Div:
     5. Carte choroplèthe (France complète)
     6. Inspecteur d'organisations (recherche + détail)
     7. Histogramme multi-vues (top orgs, paliers, secteurs)
-    8. Décomposition Scope 1/2/3 (top 15 orgs)
+
 
     Returns:
         html.Div : Layout complet de la page
