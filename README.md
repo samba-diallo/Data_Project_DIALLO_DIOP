@@ -3,6 +3,14 @@
 > Tableau de bord interactif des Bilans Carbone réglementaires (BEGES)
 > publiés par les organisations françaises sur la plateforme ADEME.
 
+### 🌐 Démo en ligne
+
+> ### [▶ Ouvrir le dashboard — ges-insight.onrender.com](https://ges-insight.onrender.com/)
+>
+> Déployé sur Render (plan gratuit). Premier accès après une période d'inactivité : ~30 s de réveil, puis instantané.
+
+---
+
 GES Insight donne une vue d'ensemble de la déclaration des émissions de gaz
 à effet de serre en France : qui publie son bilan, dans quelles régions, à
 quelle hauteur, et selon quelle décomposition entre les Scopes 1, 2 et 3 du
@@ -53,65 +61,66 @@ inspiration des publications institutionnelles françaises.
 
 ## User Guide
 
+### Accès direct (sans installation)
+
+Le dashboard est déployé en ligne et consultable immédiatement :
+
+**🔗 [https://ges-insight.onrender.com](https://ges-insight.onrender.com/)**
+
+Hébergement Render (plan gratuit) — le service s'endort après 15 min
+d'inactivité, le premier accès peut donc prendre environ 30 secondes le
+temps du réveil, puis la navigation devient instantanée.
+
 ### Prérequis
 
-- Python **3.10** ou supérieur (l'application utilise des annotations
-  de type modernes : `dict[str, str]`, `int | None`)
+- Python **3.9** ou supérieur (testé en CI sur Python 3.9 / 3.10 / 3.11)
+- [`uv`](https://docs.astral.sh/uv/) — gestionnaire d'environnement et de
+  dépendances **imposé par le cahier des charges**. Installation :
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh   # macOS / Linux
+  pip install uv                                    # alternative cross-platform
+  ```
 - Connexion internet **uniquement** lors du premier téléchargement des
   données ; le dashboard fonctionne ensuite hors ligne.
 
-### Installation
+### Installation (procédure d'évaluation)
 
 ```bash
 git clone https://github.com/samba-diallo/Data_Project_DIALLO_DIOP.git
 cd Data_Project_DIALLO_DIOP
+uv sync
 ```
 
-Création d'un environnement virtuel (recommandé) :
-
-```bash
-# Linux / macOS
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Windows (PowerShell)
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-Installation des dépendances :
-
-```bash
-python -m pip install -r requirements.txt
-```
+`uv sync` lit `pyproject.toml` et `uv.lock`, crée automatiquement un
+environnement virtuel `.venv/` et installe la version exacte de chaque
+dépendance — pas de `pip install` manuel à faire.
 
 ### Préparation des données
 
-Le fichier source de l'ADEME est récupéré automatiquement la première fois
-puis stocké localement pour les exécutions ultérieures.
+Les données sont stockées dans la base SQLite unique `data/db.sqlite`
+(deux tables : `raw` et `cleaned`), conformément au cahier des charges.
 
 ```bash
-# 1. Télécharger le fichier brut depuis l'API ADEME (≈ 10 Mo)
-python -m src.utils.get_data
+# 1. Télécharger le fichier brut depuis l'API ADEME -> table `raw`
+uv run python -m src.utils.get_data
 
-# 2. Nettoyer et générer le CSV exploitable par le dashboard
-python -m src.utils.clean_data
+# 2. Nettoyer les données -> table `cleaned`
+uv run python -m src.utils.clean_data
 ```
 
 Résultat attendu :
 
 ```
 data/
-├── raw/
-│   └── bilan-ges.xlsx          (10 000 lignes × 104 colonnes, données ADEME brutes)
-└── cleaned/
-    └── cleaneddata.csv         (9 991 lignes × 40 colonnes, prêt pour le dashboard)
+└── db.sqlite                   (~56 Mo, deux tables :
+                                 raw      : 10 000 lignes × 104 colonnes  -- données ADEME brutes
+                                 cleaned  :  9 990 lignes ×  40 colonnes  -- prêt pour le dashboard)
 ```
 
 ### Lancer le dashboard
 
 ```bash
-python main.py
+uv run python main.py
 ```
 
 Le serveur démarre par défaut sur **http://127.0.0.1:8050**.
@@ -128,7 +137,7 @@ Pour arrêter : `Ctrl + C` dans le terminal.
 Exemple pour exposer le dashboard à un conteneur Docker :
 
 ```bash
-HOST=0.0.0.0 PORT=8080 python main.py
+HOST=0.0.0.0 PORT=8080 uv run python main.py
 ```
 
 ---
@@ -188,17 +197,17 @@ Conformes aux postes officiels du référentiel BEGES :
 ```text
 API ADEME (xlsx)
         ↓ get_data.download_data()
-data/raw/bilan-ges.xlsx
-        ↓ clean_data.load_raw_data()
-        ↓ remove_duplicates()         (dédoublonnage par Id ADEME)
-        ↓ handle_missing_values()     (drop si Région ou Année manquante)
-        ↓ normalize_columns()         (sélection des 36 colonnes utiles,
-        ↓                              renommage snake_case, cast Int64
-        ↓                              nullable, strip caractères Unicode PUA,
-        ↓                              calcul des totaux par scope)
+data/db.sqlite — table `raw`
+        ↓ clean_data.load_raw_data()           (SELECT * FROM raw)
+        ↓ remove_duplicates()                  (dédoublonnage par Id ADEME)
+        ↓ handle_missing_values()              (drop si Région ou Année manquante)
+        ↓ normalize_columns()                  (sélection des 36 colonnes utiles,
+        ↓                                       renommage snake_case, cast Int64
+        ↓                                       nullable, strip caractères Unicode PUA,
+        ↓                                       calcul des totaux par scope)
         ↓ save_cleaned_data()
-data/cleaned/cleaneddata.csv
-        ↓ common_functions.load_cleaned_data()
+data/db.sqlite — table `cleaned`
+        ↓ common_functions.load_cleaned_data() (SELECT * FROM cleaned)
         ↓ filter_data() / aggregate_data()
 Dashboard Dash (pages/home, pages/analysis, pages/about)
 ```
@@ -247,9 +256,9 @@ flowchart LR
         COMMON["utils/common_functions.py"]
     end
 
-    subgraph Storage["Données locales"]
-        RAW[("data/raw/<br/>bilan-ges.xlsx")]
-        CLEANED[("data/cleaned/<br/>cleaneddata.csv")]
+    subgraph Storage["Données locales — SQLite"]
+        RAW[("data/db.sqlite<br/>table `raw`")]
+        CLEANED[("data/db.sqlite<br/>table `cleaned`")]
     end
 
     MAIN --> NAVBAR
@@ -279,15 +288,16 @@ flowchart LR
 data_project/
 ├── main.py                       Point d'entrée Dash, routing multi-pages
 ├── config.py                     Chemins, URL ADEME, host/port, mode debug
-├── requirements.txt              Dépendances Python (construit manuellement)
+├── pyproject.toml                Métadonnées + dépendances (PEP 621, uv)
+├── uv.lock                       Versions exactes résolues par uv (généré)
+├── requirements.txt              Fallback pip (utilisé par Render uniquement)
 ├── README.md                     Présent fichier
 ├── .gitignore
 │
 ├── data/
-│   ├── raw/
-│   │   └── bilan-ges.xlsx        Snapshot ADEME (10 000 × 104)
-│   └── cleaned/
-│       └── cleaneddata.csv       Dataset prêt pour le dashboard (9 991 × 40)
+│   └── db.sqlite                 Base SQLite unique :
+│                                   table `raw`     -> 10 000 × 104 (données ADEME)
+│                                   table `cleaned` ->  9 990 ×  40 (prêt dashboard)
 │
 ├── src/
 │   ├── components/               Composants Dash réutilisables
@@ -324,8 +334,11 @@ Les tests vérifient les signatures, les annotations de type et la
 présence des docstrings sur les fonctions backend.
 
 ```bash
-python -m pytest tests/ -v
+uv run pytest tests/ -v
 ```
+
+Suite : **108 tests**, exécutés en ~5 s. La matrice CI GitHub Actions
+relance la suite sur Python 3.9, 3.10 et 3.11 à chaque push.
 
 ### Ajouter une nouvelle page
 
@@ -493,27 +506,121 @@ rendre la distribution lisible.
 
 ### Déclaration d'originalité
 
-Nous, Samba DIALLO et Mouhamed DIOP, déclarons sur l'honneur que le code
-source de ce projet a été produit par nos soins, à l'exception explicite
-des éléments énumérés ci-dessous. La rédaction du code a été assistée par
-l'agent de codage **Claude Code** (Anthropic), utilisé comme outil
-d'aide au développement et à la documentation. Toutes les lignes
-non explicitement déclarées comme empruntées sont réputées avoir été
-produites par les auteurs (avec ou sans assistance IA).
+Nous, **Samba DIALLO** et **Mouhamed DIOP**, déclarons sur l'honneur que
+le code source de ce projet — architecture, choix techniques, logique
+métier, design system et rédaction du contenu éditorial — est le fruit
+de notre travail et de nos décisions. Les seuls éléments qui ne sont pas
+de notre main sont les bibliothèques tierces (déclarées dans
+`requirements.txt`) et les ressources publiques listées dans la section
+« Données externes utilisées » et « Documentation consultée » ci-dessous.
+
+Toute ligne non explicitement déclarée comme empruntée est réputée avoir
+été produite par les auteurs. L'omission ou l'absence de déclaration
+d'un emprunt sera considérée comme du plagiat.
+
+### Utilisation d'outils d'assistance IA et prompts structurants
+
+Conformément à l'autorisation accordée, nous avons
+utilisé l'agent de codage **Claude Code** (Anthropic) comme outil
+d'assistance ponctuelle. Cet usage a été cadré par des **prompts
+structurants** que nous formulions à partir d'une intention déjà
+définie : nous décidions de l'architecture, des fonctionnalités à
+livrer et des choix esthétiques ; l'IA nous aidait à matérialiser
+ces décisions plus rapidement et à relire le code produit.
+
+**Ce que nous n'avons jamais délégué à l'IA :**
+
+- le choix du sujet (Bilans GES — ADEME) et du dataset,
+- la définition du périmètre d'analyse (2010–2025, France métropolitaine, scopes BEGES),
+- la grille de lecture des 22 postes d'émissions P1.1 à P6.1,
+- la direction artistique (« éditorial scientifique français » : off-white papier, vert profond, or pâle, polices Fraunces / DM Sans),
+- la stratégie de tests unitaires (pytest, matrice CI Python 3.9 / 3.10 / 3.11),
+- le découpage en branches Git (`main`, `dev`, `dev1` Samba, `dev2` Mouhamed),
+- la validation et la relecture critique de chaque proposition de l'IA avant intégration.
+
+**Exemples de prompts structurants effectivement utilisés**, classés par
+phase du projet :
+
+> **Phase pipeline de données** —
+> *« Notre dataset ADEME a 104 colonnes ; nous voulons n'en garder que 14
+> descriptives plus les 22 postes d'émissions P1.x à P6.x. Propose-nous une
+> implémentation modulaire en 4 fonctions Python (`load_raw_data`,
+> `remove_duplicates`, `handle_missing_values`, `normalize_columns`) avec
+> typing et docstrings, en suivant cette logique pipeline. »*
+
+> **Phase carte choroplèthe** —
+> *« Sur la carte France, nous voulons que toutes les régions restent
+> visibles même quand l'utilisateur filtre, et que les régions
+> sélectionnées soient mises en évidence par une bordure or sans masquer
+> la couleur d'émissions sous-jacente. Détaille-nous une approche
+> Plotly à plusieurs traces (choropleth de base + overlay highlight). »*
+
+> **Phase debug CI** —
+> *« Notre matrice CI échoue sur Python 3.9 avec
+> `TypeError: unsupported operand type(s) for |` à cause de la syntaxe
+> `list[str] | None`. Liste-nous les options de correction avec leurs
+> trade-offs : on veut garder cette syntaxe moderne, pas revenir aux
+> `Optional[...]`. »*
+
+> **Phase page Méthodologie** —
+> *« Nous avons besoin de documenter le référentiel BEGES (3 scopes,
+> 22 postes), le pipeline ADEME (5 étapes) et la déclaration
+> d'originalité. Propose un layout Dash qui réutilise nos composants
+> existants (`create_header`, design tokens CSS définis dans
+> `style.css`) — pas de nouveau framework, pas de dépendance
+> supplémentaire. »*
+
+> **Phase déploiement** —
+> *« Nous voulons déployer le dashboard en ligne pour la démo du prof,
+> en gratuit et le plus simple possible. Compare Render, Railway,
+> Cloudflare Pages et Fly.io pour une app Dash, et propose la
+> configuration minimale pour l'option retenue. »*
+
+### Exemples de code dont nous sommes à l'origine
+
+Au-delà des prompts ci-dessus, plusieurs blocs reflètent directement des
+décisions humaines qui n'auraient pu être devinées par l'IA :
+
+- **`src/utils/clean_data.py`** — Le mapping `EMISSION_POSTS` des
+  22 postes BEGES (5 + 2 + 15) et le regroupement P3/P4/P5/P6 sous
+  « Scope 3 » dans `_add_scope_totals` traduisent notre connaissance
+  du référentiel ADEME et du dataset réel (notamment l'exclusion
+  des entités « DR ADEME » non géographiques et le mapping
+  « Hauts de France » → « Hauts-de-France » pour aligner avec le GeoJSON).
+- **`src/utils/common_functions.py`** — Le choix de la fenêtre
+  `YEAR_MIN = 2010 / YEAR_MAX = 2025` (justifié par la loi Grenelle II
+  et la non-publication 2026) est une décision éditoriale du binôme,
+  pas une suggestion automatique.
+- **`src/components/charts_theme.py`** — La palette `SCOPE_COLORS`
+  (vert profond / vert mousse / or pâle) et l'échelle séquentielle
+  `SEQUENTIAL_HEATMAP` sont issues de notre direction artistique
+  « éditorial scientifique français » (réf. visuelles : Bloomberg
+  Green, Le Monde Diplomatique).
+- **`src/pages/home.py`** — Le choix des 4 KPIs principaux
+  (bilans / organisations / émissions cumulées / période) et la mise
+  en récit éditoriale (titres « Une dynamique réglementaire qui
+  s'accélère », « Qui publie ses bilans GES ? ») sont rédigés par
+  les auteurs.
+- **`assets/style.css`** — Les design tokens (variables CSS,
+  échelles typographiques, grille de 8 px, palette papier) sont
+  définis et organisés par nos soins.
 
 ### Emprunts déclarés
 
-À ce jour, aucune ligne de code n'a été reprise telle quelle depuis
-des sources externes (Stack Overflow, exemples Plotly, etc.). Les
-références documentaires consultées sont listées ci-dessous, mais
-les implémentations restent originales.
+Aucune ligne de code n'a été copiée telle quelle depuis des sources
+externes (Stack Overflow, gists, exemples Plotly, etc.). Les
+bibliothèques tierces utilisées (`dash`, `plotly`, `pandas`,
+`dash-bootstrap-components`, `dash-iconify`, `openpyxl`, `gunicorn`)
+sont installées via `requirements.txt` et utilisées comme telles,
+sans modification de leur code source.
 
 ### Données externes utilisées
 
-| Ressource | Source | Usage |
-|---|---|---|
-| Bilans GES | [data.ademe.fr](https://data.ademe.fr/datasets/bilan-ges) | Données primaires du dashboard, Licence Ouverte v2.0 |
-| GeoJSON régions de France (Phase 4) | [france-geojson.gregoiredavid.fr](https://france-geojson.gregoiredavid.fr) | Tracé de la carte choroplèthe (Licence Ouverte) |
+| Ressource | Source | Usage | Licence |
+|---|---|---|---|
+| Bilans GES | [data.ademe.fr](https://data.ademe.fr/datasets/bilan-ges) | Données primaires du dashboard | Licence Ouverte v2.0 (Etalab) |
+| GeoJSON régions de France | [france-geojson.gregoiredavid.fr](https://france-geojson.gregoiredavid.fr) | Tracé de la carte choroplèthe | Licence Ouverte (Etalab) |
+| Polices Fraunces, DM Sans, JetBrains Mono | [Google Fonts](https://fonts.google.com) | Typographie du dashboard | SIL Open Font License |
 
 ### Documentation consultée
 
@@ -524,9 +631,7 @@ les implémentations restent originales.
 | Documentation Plotly Python | https://plotly.com/python/ |
 | Documentation pandas | https://pandas.pydata.org/docs/ |
 | dash-bootstrap-components | https://dash-bootstrap-components.opensource.faculty.ai/ |
-
-L'omission ou l'absence de déclaration d'un emprunt sera considérée comme
-du plagiat.
+| Méthode BEGES (référentiel ADEME) | https://bilans-ges.ademe.fr |
 
 ---
 
