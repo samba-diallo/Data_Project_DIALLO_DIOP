@@ -1,0 +1,40 @@
+# Configuration de déploiement Render (Infrastructure as Code).
+# Permet à Render de recréer le service à l'identique depuis le repo Git.
+# Doc : https://render.com/docs/yaml-spec
+#
+# Déploiement :
+#   1. Pousser ce repo sur GitHub
+#   2. Sur render.com -> New + -> Blueprint -> sélectionner le repo
+#   3. Render lit ce fichier, installe les dépendances et démarre gunicorn
+#
+# URL publique générée : https://ges-insight.onrender.com
+
+services:
+  - type: web
+    name: ges-insight
+    runtime: python
+    # Plan gratuit : suffisant pour la démo (s'endort après 15 min d'inactivité,
+    # premier accès ~30s, puis instantané).
+    plan: free
+    region: frankfurt
+
+    # Installation des dépendances déclarées dans requirements.txt.
+    buildCommand: pip install -r requirements.txt
+
+    # Démarrage du serveur WSGI gunicorn pointant sur l'attribut `server`
+    # exposé dans main.py (server = app.server, ligne 156).
+    # --bind 0.0.0.0:$PORT : Render injecte la variable PORT, on doit s'y
+    # binder pour que le routeur Render trouve le service.
+    # --workers 2 : 2 process Python en parallèle (cohérent avec le free tier).
+    # --timeout 120 : laisse le temps au premier chargement du CSV (~3 Mo).
+    startCommand: gunicorn main:server --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+
+    # Variables d'environnement injectées dans le conteneur Render.
+    envVars:
+      # Version Python utilisée par Render (cohérente avec la matrice CI).
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      # On laisse DEBUG_MODE à False en production (sinon Dash expose des
+      # détails sensibles et affiche le bouton callback graph).
+      - key: DEBUG
+        value: "false"
