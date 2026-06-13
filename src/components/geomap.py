@@ -14,6 +14,10 @@ Doc Plotly choropleth : https://plotly.com/python/choropleth-maps/
 Doc Plotly scattergeo : https://plotly.com/python/scatter-plots-on-maps/
 """
 
+# Permet la syntaxe PEP 604 (list[str] | None) sur Python 3.9 :
+# les annotations restent des chaînes et ne sont pas évaluées à l'import.
+from __future__ import annotations
+
 import json
 import os
 

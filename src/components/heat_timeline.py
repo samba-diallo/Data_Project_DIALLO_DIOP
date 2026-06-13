@@ -12,6 +12,10 @@ comme des barres courtes/uniformes colorées par intensité, avec la
 plage active surlignée.
 """
 
+# Permet la syntaxe PEP 604 (tuple[int, int] | None) sur Python 3.9 :
+# les annotations restent des chaînes et ne sont pas évaluées à l'import.
+from __future__ import annotations
+
 import pandas as pd
 import plotly.graph_objects as go
 
