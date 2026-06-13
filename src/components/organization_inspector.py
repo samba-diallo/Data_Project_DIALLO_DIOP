@@ -16,6 +16,10 @@ Usage : à brancher dans la page Explorer avec deux callbacks :
 Doc Dash dropdown : https://dash.plotly.com/dash-core-components/dropdown
 """
 
+# Permet la syntaxe PEP 604 (str | None) sur Python 3.9 :
+# les annotations restent des chaînes et ne sont pas évaluées à l'import.
+from __future__ import annotations
+
 import pandas as pd
 import plotly.graph_objects as go
 from dash import html, dcc
